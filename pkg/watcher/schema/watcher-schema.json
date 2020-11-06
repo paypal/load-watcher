@@ -1,0 +1,117 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "timestamp": {
+      "type": "integer"
+    },
+    "window": {
+      "type": "object",
+      "properties": {
+        "duration": {
+          "type": "string"
+        },
+        "start": {
+          "type": "integer"
+        },
+        "end": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "duration",
+        "start",
+        "end"
+      ]
+    },
+    "source": {
+      "type": "string"
+    },
+    "data": {
+      "type": "object",
+      "patternProperties": {
+        "^[0-9]+$": {
+          "type": "object",
+          "properties": {
+            "metrics": {
+              "type": "array",
+              "items": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "rollup": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "integer",
+                      "description": "percentage value"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "type",
+                    "rollup",
+                    "value"
+                  ]
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "type": {
+                      "type": "string"
+                    },
+                    "rollup": {
+                      "type": "string"
+                    },
+                    "value": {
+                      "type": "integer",
+                      "description": "percentage value"
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "type",
+                    "rollup",
+                    "value"
+                  ]
+                }
+              ]
+            },
+            "tags": {
+              "type": "object"
+            },
+            "metadata": {
+              "type": "object",
+              "properties": {
+                "dataCenter": {
+                  "type": "string"
+                },
+                "pool": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "required": [
+            "metrics"
+          ]
+        }
+      }
+    }
+  },
+  "required": [
+    "timestamp",
+    "window",
+    "source",
+    "data"
+  ]
+}
