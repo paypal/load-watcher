@@ -1,0 +1,53 @@
+{
+  "timestamp": 1556987522,
+  "window": {
+    "duration": "15m",
+    "start": 1556984522,
+    "end": 1556985422
+  },
+  "source": "InfluxDB",
+  "data": {
+    "node-1": {
+      "metrics": [
+        {
+          "name": "host.cpu.utilisation",
+          "type": "cpu",
+          "rollup": "AVG",
+          "value": 20
+        },
+        {
+          "name": "host.memory.utilisation",
+          "type": "memory",
+          "rollup": "STD",
+          "value": 5
+        }
+      ],
+      "tags": {},
+      "metadata": {
+        "dataCenter": "data-center-1",
+        "pool": "critical-apps"
+      }
+    },
+    "node-2": {
+      "metrics": [
+        {
+          "name": "host.cpu.utilisation",
+          "type": "cpu",
+          "rollup": "AVG",
+          "value": 20
+        },
+        {
+          "name": "host.memory.utilisation",
+          "type": "memory",
+          "rollup": "STD",
+          "value": 5
+        }
+      ]
+    },
+    "metadata": {
+      "dataCenter": "data-center-2",
+      "pool": "light-apps"
+    },
+    "tags": {}
+  }
+}
