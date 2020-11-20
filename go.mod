@@ -1,4 +1,4 @@
-module metrics/loadwatcher
+module github.com/paypal/load-watcher
 
 go 1.15
 
