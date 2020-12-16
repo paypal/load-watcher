@@ -27,7 +27,7 @@ import (
 	"strings"
 	"time"
 
-	"metrics/loadwatcher/pkg/watcher"
+	"github.com/paypal/load-watcher/pkg/watcher"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -35,9 +35,11 @@ import (
 const (
 	// SignalFX Request Params
 	signalFxBaseUrl        = "https://api.pypl-us0.signalfx.com/v1/timeserieswindow"
-	signalFxHostNameSuffix = ".group.region.gcp.com" // SignalFx adds a suffix to hostnames if configured
+	// SignalFx adds a suffix to hostnames if configured
+	signalFxHostNameSuffix = ".group.region.gcp.com"
 	signalFxHostFilter     = "host:"
-	authToken              = "" // Org auth token
+	// Org auth token
+	authToken              = ""
 
 	// SignalFX Query Params
 	oneMinuteResolutionMs   = 60000
@@ -173,7 +175,8 @@ func decodeMetricsPayload(payload interface{}) (float64, error) {
 	}
 
 	var timestampUtilisation []interface{}
-	timestampUtilisation, ok = values[len(values)-1].([]interface{}) // Choose the latest window out of multiple values returned
+	// Choose the latest window out of multiple values returned
+	timestampUtilisation, ok = values[len(values)-1].([]interface{})
 	if !ok {
 		return -1, errors.New("unable to deserialise metric values")
 	}

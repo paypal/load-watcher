@@ -22,7 +22,7 @@ import (
 	"os"
 	"strconv"
 
-	"metrics/loadwatcher/pkg/watcher"
+	"github.com/paypal/load-watcher/pkg/watcher"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -36,8 +36,10 @@ var (
 )
 
 const (
-	localKubeConfig = "/Users/aqadeer/.kube/config" // path to local kube config file
-	localDev        = "LOCAL_DEV"                   // env variable to indicate client is outside the cluster usu. for local testing
+	// path to local kube config file
+	localKubeConfig = "/Users/aqadeer/.kube/config"
+	// env variable to indicate client is outside the cluster usu. for local testing
+	localDev        = "LOCAL_DEV"
 )
 
 func init() {
@@ -50,8 +52,10 @@ func init() {
 
 // This is a client for K8s provided Metric Server
 type metricsServerClient struct {
-	metricsClientSet *metricsv.Clientset   // This client fetches node metrics from metric server
-	coreClientSet    *kubernetes.Clientset // This client fetches node capacity
+	// This client fetches node metrics from metric server
+	metricsClientSet *metricsv.Clientset
+	// This client fetches node capacity
+	coreClientSet    *kubernetes.Clientset
 }
 
 func NewMetricsServerClient() (watcher.FetcherClient, error) {
