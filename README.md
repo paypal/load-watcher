@@ -8,4 +8,38 @@ The following metrics provider clients are currently supported:
 1) SignalFx
 2) Kubernetes Metrics Server
 
-Any new clients need to implement `FetcherClient` interface.
+# Tutorial
+
+This tutorial will guide you to build load watcher Docker image, which can be deployed to work with Trimaran scheduler plugins.
+
+The default `main.go` is configured to watch Kubernetes Metrics Server.
+You can change this to any available metrics provider in `pkg/metricsprovider`.
+To build a client for new metrics provider, you will need to implement `FetcherClient` interface.
+
+First build load watcher binary with the following command in `main.go` file and save the built binary as `load-watcher`:
+
+```
+go build -o load-watcher main.go
+```
+
+If you are cross compiling for Linux 64 bit OS, use the following command:
+
+```
+env GOARCH=amd64 GOOS=linux go build -o load-watcher main.go
+```
+
+From the root folder, run the following commands to build docker image of load watcher, tag it and push to your docker repository:
+
+```
+docker build -t load-watcher .
+docker tag load-watcher:latest <your-docker-repo>:latest
+docker push <your-docker-repo>
+```
+
+Note that load watcher runs on default port 2020. Once deployed, you can use the following API to read watcher metrics:
+
+```
+GET /watcher
+```
+
+This will return metrics for all nodes. A query parameter to filter by host can be added with `host`.

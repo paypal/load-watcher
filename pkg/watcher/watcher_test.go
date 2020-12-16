@@ -17,7 +17,6 @@ limitations under the License.
 package watcher
 
 import (
-	"github.com/francoispqt/gojay"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -25,6 +24,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/francoispqt/gojay"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

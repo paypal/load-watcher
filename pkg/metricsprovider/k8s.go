@@ -18,11 +18,10 @@ package metricsprovider
 
 import (
 	"context"
-	log "github.com/sirupsen/logrus"
 	"os"
-	"strconv"
 
-	"metrics/loadwatcher/pkg/watcher"
+	"github.com/paypal/load-watcher/pkg/watcher"
+	log "github.com/sirupsen/logrus"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -32,34 +31,37 @@ import (
 )
 
 var (
-	isLocal = false
+	kubeConfigPresent = false
+	kubeConfigPath    string
 )
 
 const (
-	localKubeConfig = "/Users/aqadeer/.kube/config" // path to local kube config file
-	localDev        = "LOCAL_DEV"                   // env variable to indicate client is outside the cluster usu. for local testing
+	// env variable that provides path to kube config file, if deploying from outside K8s cluster
+	kubeConfig = "KUBE_CONFIG"
 )
 
 func init() {
-	v := os.Getenv(localDev)
-	val, err := strconv.ParseBool(v)
-	if err == nil {
-		isLocal = val
+	var ok bool
+	kubeConfigPath, ok = os.LookupEnv(kubeConfig)
+	if ok {
+		kubeConfigPresent = true
 	}
 }
 
 // This is a client for K8s provided Metric Server
 type metricsServerClient struct {
-	metricsClientSet *metricsv.Clientset   // This client fetches node metrics from metric server
-	coreClientSet    *kubernetes.Clientset // This client fetches node capacity
+	// This client fetches node metrics from metric server
+	metricsClientSet *metricsv.Clientset
+	// This client fetches node capacity
+	coreClientSet    *kubernetes.Clientset
 }
 
 func NewMetricsServerClient() (watcher.FetcherClient, error) {
 	var config *rest.Config
 	var err error
 	kubeConfig := ""
-	if isLocal {
-		kubeConfig = localKubeConfig
+	if kubeConfigPresent {
+		kubeConfig = kubeConfigPath
 	}
 	config, err = clientcmd.BuildConfigFromFlags("", kubeConfig)
 	if err != nil {
