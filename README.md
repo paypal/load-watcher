@@ -10,9 +10,10 @@ The following metrics provider clients are currently supported:
 
 # Tutorial
 
-This tutorial will guide you to build load watcher Docker image, which can be deployed with Trimaran scheduler plugins.
+This tutorial will guide you to build load watcher Docker image, which can be deployed to work with Trimaran scheduler plugins.
 
-The default `main.go` is configured to watch Kubernetes Metrics Server. You can change this to any available metrics provider in `pkg/metricsprovider`.
+The default `main.go` is configured to watch Kubernetes Metrics Server.
+You can change this to any available metrics provider in `pkg/metricsprovider`.
 To build a client for new metrics provider, you will need to implement `FetcherClient` interface.
 
 First build load watcher binary with the following command in `main.go` file and save the built binary as `load-watcher`:
@@ -35,7 +36,7 @@ docker tag load-watcher:latest <your-docker-repo>:latest
 docker push <your-docker-repo>
 ```
 
-Note that the default port load watcher runs on is 2020. Once deployed, you can use the following API to read watcher metrics:
+Note that load watcher runs on default port 2020. Once deployed, you can use the following API to read watcher metrics:
 
 ```
 GET /watcher

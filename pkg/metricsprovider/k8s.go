@@ -18,11 +18,9 @@ package metricsprovider
 
 import (
 	"context"
+	"github.com/paypal/load-watcher/pkg/watcher"
 	log "github.com/sirupsen/logrus"
 	"os"
-	"strconv"
-
-	"github.com/paypal/load-watcher/pkg/watcher"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -32,21 +30,20 @@ import (
 )
 
 var (
-	isLocal = false
+	kubeConfigPresent = false
+	kubeConfigPath    string
 )
 
 const (
-	// path to local kube config file
-	localKubeConfig = "/Users/aqadeer/.kube/config"
-	// env variable to indicate client is outside the cluster usu. for local testing
-	localDev        = "LOCAL_DEV"
+	// env variable that provides path to kube config file, if deploying from outside K8s cluster
+	kubeConfig = "KUBE_CONFIG"
 )
 
 func init() {
-	v := os.Getenv(localDev)
-	val, err := strconv.ParseBool(v)
-	if err == nil {
-		isLocal = val
+	var ok bool
+	kubeConfigPath, ok = os.LookupEnv(kubeConfig)
+	if ok {
+		kubeConfigPresent = true
 	}
 }
 
@@ -62,8 +59,8 @@ func NewMetricsServerClient() (watcher.FetcherClient, error) {
 	var config *rest.Config
 	var err error
 	kubeConfig := ""
-	if isLocal {
-		kubeConfig = localKubeConfig
+	if kubeConfigPresent {
+		kubeConfig = kubeConfigPath
 	}
 	config, err = clientcmd.BuildConfigFromFlags("", kubeConfig)
 	if err != nil {
