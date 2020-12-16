@@ -24,7 +24,6 @@ package watcher
 import (
 	"context"
 	"errors"
-	"github.com/francoispqt/gojay"
 	"net/http"
 	"os"
 	"os/signal"
@@ -32,6 +31,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/francoispqt/gojay"
 	log "github.com/sirupsen/logrus"
 )
 

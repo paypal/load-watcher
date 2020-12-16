@@ -18,9 +18,10 @@ package metricsprovider
 
 import (
 	"context"
+	"os"
+
 	"github.com/paypal/load-watcher/pkg/watcher"
 	log "github.com/sirupsen/logrus"
-	"os"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
