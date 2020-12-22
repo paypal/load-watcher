@@ -8,6 +8,8 @@ The following metrics provider clients are currently supported:
 1) SignalFx
 2) Kubernetes Metrics Server
 
+These clients fetch CPU usage currently, support for other resources will be added later as needed.
+
 # Tutorial
 
 This tutorial will guide you to build load watcher Docker image, which can be deployed to work with Trimaran scheduler plugins.

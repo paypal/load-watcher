@@ -36,7 +36,7 @@ import (
 )
 
 const (
-	baseUrl        = "/Watcher"
+	baseUrl        = "/watcher"
 	FifteenMinutes = "15m"
 	TenMinutes     = "10m"
 	FiveMinutes    = "5m"
