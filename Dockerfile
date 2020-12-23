@@ -1,5 +1,5 @@
-FROM golang:1.5-alpine
+FROM alpine
 
-ADD ./load-watcher /usr/local/bin/load-watcher
+ADD ./bin/load-watcher /usr/local/bin/load-watcher
 
 CMD ["/usr/local/bin/load-watcher"]

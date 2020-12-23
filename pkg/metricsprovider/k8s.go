@@ -53,7 +53,12 @@ type metricsServerClient struct {
 	// This client fetches node metrics from metric server
 	metricsClientSet *metricsv.Clientset
 	// This client fetches node capacity
-	coreClientSet    *kubernetes.Clientset
+	coreClientSet *kubernetes.Clientset
+}
+
+type nodeMertics struct {
+	memory int64
+	cpu    int64
 }
 
 func NewMetricsServerClient() (watcher.FetcherClient, error) {
@@ -85,14 +90,19 @@ func (m metricsServerClient) FetchHostMetrics(host string, window *watcher.Windo
 	if err != nil {
 		return metrics, err
 	}
-	var fetchedMetric watcher.Metric
 	node, err := m.coreClientSet.CoreV1().Nodes().Get(context.Background(), host, metav1.GetOptions{})
 	if err != nil {
 		return metrics, err
 	}
-	fetchedMetric.Value = float64(100*nodeMetrics.Usage.Cpu().MilliValue()) / float64(node.Status.Capacity.Cpu().MilliValue())
-	fetchedMetric.Type = watcher.CPU
-	metrics = append(metrics, fetchedMetric)
+	var fetchedMetricCPU, fetchedMetricsMemory watcher.Metric
+
+	fetchedMetricCPU.Value = float64(100*nodeMetrics.Usage.Cpu().MilliValue()) / float64(node.Status.Capacity.Cpu().MilliValue())
+	fetchedMetricCPU.Type = watcher.CPU
+
+	fetchedMetricsMemory.Type = watcher.Memory
+	fetchedMetricsMemory.Value = float64(100*nodeMetrics.Usage.Memory().MilliValue()) / float64(node.Status.Capacity.Memory().MilliValue())
+
+	metrics = append(metrics, fetchedMetricCPU, fetchedMetricsMemory)
 	return metrics, nil
 }
 
@@ -107,19 +117,25 @@ func (m metricsServerClient) FetchAllHostsMetrics(window *watcher.Window) (map[s
 	if err != nil {
 		return metrics, err
 	}
-	nodeCapacityMap := make(map[string]int64)
+	nodeCapacityMap := make(map[string]nodeMertics)
 	for _, host := range nodeList.Items {
-		nodeCapacityMap[host.Name] = host.Status.Capacity.Cpu().MilliValue()
+		nodeCapacityMap[host.Name] = nodeMertics{
+			cpu:    host.Status.Capacity.Cpu().MilliValue(),
+			memory: host.Status.Capacity.Memory().MilliValue(),
+		}
 	}
 	for _, host := range nodeMetricsList.Items {
-		var fetchedMetric watcher.Metric
-		fetchedMetric.Type = watcher.CPU
 		if _, ok := nodeCapacityMap[host.Name]; !ok {
 			log.Errorf("unable to find host %v in node list", host.Name)
 			continue
 		}
-		fetchedMetric.Value = float64(host.Usage.Cpu().MilliValue()) / float64(nodeCapacityMap[host.Name])
-		metrics[host.Name] = append(metrics[host.Name], fetchedMetric)
+		var fetchedMetricCPU, fetchedMetricsMemory watcher.Metric
+		fetchedMetricCPU.Type = watcher.CPU
+		fetchedMetricCPU.Value = float64(host.Usage.Cpu().MilliValue()) / float64(nodeCapacityMap[host.Name].cpu)
+
+		fetchedMetricsMemory.Type = watcher.Memory
+		fetchedMetricsMemory.Value = float64(host.Usage.Memory().MilliValue()) / float64(nodeCapacityMap[host.Name].memory)
+		metrics[host.Name] = append(metrics[host.Name], fetchedMetricCPU, fetchedMetricsMemory)
 	}
 	return metrics, nil
 }
