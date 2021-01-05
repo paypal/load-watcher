@@ -38,14 +38,15 @@ import (
 )
 
 const (
-	baseUrl        = "/watcher"
-	FifteenMinutes = "15m"
-	TenMinutes     = "10m"
-	FiveMinutes    = "5m"
-	CPU            = "CPU"
-	Memory         = "Memory"
-	minute         = 15
-	cacheSize      = 15
+	targetLoad             = "/watcher"
+	variationRiskBalancing = "/variation"
+	FifteenMinutes         = "15m"
+	TenMinutes             = "10m"
+	FiveMinutes            = "5m"
+	CPU                    = "CPU"
+	Memory                 = "Memory"
+	minute                 = 15
+	cacheSize              = 15
 )
 
 type Watcher struct {
@@ -140,7 +141,8 @@ func (w *Watcher) StartWatching() {
 		}
 	}()
 
-	http.HandleFunc(baseUrl, w.handler)
+	http.HandleFunc(targetLoad, w.targetLoadHandler)
+	http.HandleFunc(variationRiskBalancing, w.loadVariationRiskBalancingHandler)
 	server := &http.Server{
 		Addr:    ":2020",
 		Handler: http.DefaultServeMux,
@@ -168,6 +170,19 @@ func (w *Watcher) StartWatching() {
 
 // Returns latest metrics present in load Watcher cache. StartWatching() should be called before calling this.
 // It starts from 15 minute window, and falls back to 10 min, 5 min windows subsequently if metrics are not present
+func (w *Watcher) GetLatestWatcherMetrics() (*WatcherMetrics, error) {
+	w.mutex.RLock()
+	defer w.mutex.RUnlock()
+	if !w.isStarted {
+		return nil, errors.New("need to call StartWatching() first!")
+	}
+	if len(w.minuteQueue) == 0 {
+		return nil, errors.New("unable to get any latest metrics")
+	}
+	return deepCopyWatcherMetrics(&w.minuteQueue[len(w.minuteQueue)-1]), nil
+}
+
+// GetLatestWatcherMetricsAnalysis get analysis
 func (w *Watcher) GetLatestWatcherMetricsAnalysis(duration string) (*WatcherMetrics, error) {
 	if !w.isStarted {
 		return nil, errors.New("need to call StartWatching() first!")
@@ -330,11 +345,59 @@ func deepCopyWatcherMetrics(src *WatcherMetrics) *WatcherMetrics {
 	}
 }
 
-// HTTP Handler for baseUrl endpoint
-func (w *Watcher) handler(resp http.ResponseWriter, r *http.Request) {
+// HTTP Handler for loadVariationRiskBalancing endpoint
+func (w *Watcher) loadVariationRiskBalancingHandler(resp http.ResponseWriter, r *http.Request) {
 	resp.Header().Set("Content-Type", "application/json")
 
 	metrics, err := w.GetLatestWatcherMetricsAnalysis(FifteenMinutes)
+	if metrics == nil {
+		if err != nil {
+			resp.WriteHeader(http.StatusInternalServerError)
+			log.Error(err)
+			return
+		}
+		resp.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	host := r.URL.Query().Get("host")
+	var bytes []byte
+	if host != "" {
+		if _, ok := metrics.Data.NodeMetricsMap[host]; ok {
+			hostMetricsData := make(map[string]NodeMetrics)
+			hostMetricsData[host] = metrics.Data.NodeMetricsMap[host]
+			hostMetrics := WatcherMetrics{Timestamp: metrics.Timestamp,
+				Window: metrics.Window,
+				Source: metrics.Source,
+				Data:   Data{NodeMetricsMap: hostMetricsData},
+			}
+			bytes, err = gojay.MarshalJSONObject(&hostMetrics)
+		} else {
+			resp.WriteHeader(http.StatusNotFound)
+			return
+		}
+	} else {
+		bytes, err = gojay.MarshalJSONObject(metrics)
+	}
+
+	if err != nil {
+		log.Error(err)
+		resp.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	_, err = resp.Write(bytes)
+	if err != nil {
+		log.Error(err)
+		resp.WriteHeader(http.StatusInternalServerError)
+	}
+}
+
+// HTTP Handler for targetLoad endpoint
+func (w *Watcher) targetLoadHandler(resp http.ResponseWriter, r *http.Request) {
+	resp.Header().Set("Content-Type", "application/json")
+
+	metrics, err := w.GetLatestWatcherMetrics()
 	if metrics == nil {
 		if err != nil {
 			resp.WriteHeader(http.StatusInternalServerError)
