@@ -4,6 +4,7 @@ go 1.15
 
 require (
 	github.com/francoispqt/gojay v1.2.13
+	github.com/grd/stat v0.0.0-20130623202159-138af3fd5012
 	github.com/hashicorp/consul v1.8.5
 	github.com/hashicorp/consul/api v1.7.0
 	github.com/sirupsen/logrus v1.4.2

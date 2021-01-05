@@ -83,7 +83,7 @@ func NewMetricsServerClient() (watcher.FetcherClient, error) {
 		coreClientSet:    clientSet}, nil
 }
 
-func (m metricsServerClient) FetchHostMetrics(host string, window *watcher.Window) ([]watcher.Metric, error) {
+func (m metricsServerClient) FetchHostMetrics(host string) ([]watcher.Metric, error) {
 	var metrics = []watcher.Metric{}
 
 	nodeMetrics, err := m.metricsClientSet.MetricsV1beta1().NodeMetricses().Get(context.TODO(), host, metav1.GetOptions{})
@@ -106,7 +106,7 @@ func (m metricsServerClient) FetchHostMetrics(host string, window *watcher.Windo
 	return metrics, nil
 }
 
-func (m metricsServerClient) FetchAllHostsMetrics(window *watcher.Window) (map[string][]watcher.Metric, error) {
+func (m metricsServerClient) FetchAllHostsMetrics() (map[string][]watcher.Metric, error) {
 	metrics := make(map[string][]watcher.Metric)
 
 	nodeMetricsList, err := m.metricsClientSet.MetricsV1beta1().NodeMetricses().List(context.TODO(), metav1.ListOptions{})

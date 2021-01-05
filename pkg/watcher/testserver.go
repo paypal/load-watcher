@@ -81,7 +81,7 @@ func NewTestMetricsServerClient() FetcherClient {
 	return testServerClient{}
 }
 
-func (t testServerClient) FetchHostMetrics(host string, window *Window) ([]Metric, error) {
+func (t testServerClient) FetchHostMetrics(host string) ([]Metric, error) {
 	if _, ok := FifteenMinutesMetricsMap[host]; !ok {
 		return nil, nil
 	}
@@ -92,21 +92,21 @@ func (t testServerClient) FetchHostMetrics(host string, window *Window) ([]Metri
 		return nil, nil
 	}
 
-	if window.Duration == TenMinutes {
-		return TenMinutesMetricsMap[host], nil
-	} else if window.Duration == FiveMinutes {
-		return FiveMinutesMetricsMap[host], nil
-	}
+	// if window.Duration == TenMinutes {
+	// 	return TenMinutesMetricsMap[host], nil
+	// } else if window.Duration == FiveMinutes {
+	// 	return FiveMinutesMetricsMap[host], nil
+	// }
 
 	return FifteenMinutesMetricsMap[host], nil
 }
 
-func (t testServerClient) FetchAllHostsMetrics(window *Window) (map[string][]Metric, error) {
-	if window.Duration == TenMinutes {
-		return TenMinutesMetricsMap, nil
-	} else if window.Duration == FiveMinutes {
-		return FiveMinutesMetricsMap, nil
-	}
+func (t testServerClient) FetchAllHostsMetrics() (map[string][]Metric, error) {
+	// if window.Duration == TenMinutes {
+	// 	return TenMinutesMetricsMap, nil
+	// } else if window.Duration == FiveMinutes {
+	// 	return FiveMinutesMetricsMap, nil
+	// }
 
 	return FifteenMinutesMetricsMap, nil
 }

@@ -34,12 +34,12 @@ import (
 
 const (
 	// SignalFX Request Params
-	signalFxBaseUrl        = "https://api.pypl-us0.signalfx.com/v1/timeserieswindow"
+	signalFxBaseUrl = "https://api.pypl-us0.signalfx.com/v1/timeserieswindow"
 	// SignalFx adds a suffix to hostnames if configured
 	signalFxHostNameSuffix = ".group.region.gcp.com"
 	signalFxHostFilter     = "host:"
 	// Org auth token
-	authToken              = ""
+	authToken = ""
 
 	// SignalFX Query Params
 	oneMinuteResolutionMs   = 60000
@@ -64,13 +64,13 @@ func NewSignalFxClient() (watcher.FetcherClient, error) {
 		Transport: tlsConfig}}, nil
 }
 
-func (s signalFxClient) FetchHostMetrics(host string, window *watcher.Window) ([]watcher.Metric, error) {
+func (s signalFxClient) FetchHostMetrics(host string) ([]watcher.Metric, error) {
 	log.Debugf("fetching metrics for host %v", host)
 	var metrics []watcher.Metric
 	hostQuery := signalFxHostFilter + host + signalFxHostNameSuffix
 
 	for _, metric := range []string{cpuUtilizationMetric, memoryUtilizationMetric} {
-		uri, err := buildMetricURL(hostQuery, metric, window)
+		uri, err := buildMetricURL(hostQuery, metric)
 		if err != nil {
 			return metrics, err
 		}
@@ -110,11 +110,11 @@ func (s signalFxClient) FetchHostMetrics(host string, window *watcher.Window) ([
 }
 
 // TODO(aqadeer): Fetching metrics for all hosts is not possible currently via timeserieswindow SignalFx API
-func (s signalFxClient) FetchAllHostsMetrics(window *watcher.Window) (map[string][]watcher.Metric, error) {
+func (s signalFxClient) FetchAllHostsMetrics() (map[string][]watcher.Metric, error) {
 	panic("Not yet implemented")
 }
 
-func buildMetricURL(host string, metric string, window *watcher.Window) (uri *url.URL, err error) {
+func buildMetricURL(host string, metric string) (uri *url.URL, err error) {
 	uri, err = url.Parse(signalFxBaseUrl)
 	if err != nil {
 		return nil, err
@@ -127,8 +127,8 @@ func buildMetricURL(host string, metric string, window *watcher.Window) (uri *ur
 	builder.WriteString(metric)
 	q.Set("query", builder.String())
 
-	q.Set("startMs", strconv.FormatInt(window.Start, 10))
-	q.Set("endMs", strconv.FormatInt(window.End, 10))
+	// q.Set("startMs", strconv.FormatInt(window.Start, 10))
+	// q.Set("endMs", strconv.FormatInt(window.End, 10))
 	q.Set("resolution", strconv.Itoa(oneMinuteResolutionMs))
 	uri.RawQuery = q.Encode()
 	return
