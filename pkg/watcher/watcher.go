@@ -45,6 +45,8 @@ const (
 	FiveMinutes            = "5m"
 	CPU                    = "CPU"
 	Memory                 = "Memory"
+	AVG                    = "AVG"
+	STD                    = "STD"
 	minute                 = 15
 	cacheSize              = 15
 )
