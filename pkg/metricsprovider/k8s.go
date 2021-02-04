@@ -83,7 +83,6 @@ func (m metricsServerClient) Name() string {
 	return k8sClientName
 }
 
-
 func (m metricsServerClient) FetchHostMetrics(host string, window *watcher.Window) ([]watcher.Metric, error) {
 	var metrics = []watcher.Metric{}
 

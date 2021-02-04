@@ -64,7 +64,7 @@ type Window struct {
 type Metric struct {
 	Name   string  `json:"name"`             // Name of metric at the provider
 	Type   string  `json:"type"`             // CPU or Memory
-	Operator string  `json:"operator"`             // avg_over_time or stddev_over_time
+	Operator string  `json:"operator"`       // Examples: avg_over_time, stddev_over_time, sum, etc.
 	Rollup string  `json:"rollup,omitempty"` // Rollup used for metric calculation
 	Value  float64 `json:"value"`            // Value is expected to be in %
 }

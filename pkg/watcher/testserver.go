@@ -72,13 +72,14 @@ var _ FetcherClient = &testServerClient{}
 const (
 	FirstNode  = "worker-1"
 	SecondNode = "worker-2"
+	TestServerClientName = "TestServerClient"
 )
 
 type testServerClient struct {
 }
 
 func (t testServerClient) Name() string {
-	panic("implement me")
+	return TestServerClientName
 }
 
 func NewTestMetricsServerClient() FetcherClient {

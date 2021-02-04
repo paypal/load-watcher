@@ -17,9 +17,10 @@ limitations under the License.
 package main
 
 import (
+	"log"
+
 	"github.com/paypal/load-watcher/pkg/metricsprovider"
 	"github.com/paypal/load-watcher/pkg/watcher"
-	"log"
 )
 
 func main() {

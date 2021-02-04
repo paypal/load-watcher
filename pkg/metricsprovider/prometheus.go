@@ -19,16 +19,17 @@ package metricsprovider
 import (
 	"context"
 	"fmt"
-	"github.com/prometheus/common/config"
 	"os"
 	"time"
 
-
 	"github.com/paypal/load-watcher/pkg/watcher"
-	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
+	log "github.com/sirupsen/logrus"
+	"github.com/prometheus/common/config"
 	"github.com/prometheus/client_golang/api"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
 	"github.com/prometheus/common/model"
+
+	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
 )
 
 var (
@@ -39,24 +40,22 @@ var (
 		watcher.CPU : 	"instance:node_cpu:ratio",
 		watcher.Memory : "instance:node_memory_utilization:ratio",
 	}
-
 )
 
 const (
-	// env variable that provides path to kube config file, if deploying from outside K8s cluster
 	promClientName = "Prometheus"
 	promHostKey = "PROM_HOST"
 	promTokenKey = "PROM_TOKEN"
-	prom_std_method = "stddev_over_time"
-	prom_avg_method = "avg_over_time"
-	prom_cpu_metric = "instance:node_cpu:ratio"
-	prom_mem_metric = "instance:node_memory_utilisation:ratio"
-	all_hosts = "all"
+	promStd = "stddev_over_time"
+	promAvg = "avg_over_time"
+	promCpuMetric = "instance:node_cpu:ratio"
+	promMemMetric = "instance:node_memory_utilisation:ratio"
+	allHosts = "all"
+	hostMetricKey = "instance"
 )
 
 func init() {
 	var promHostPresent bool
-
 	promHost, promHostPresent = os.LookupEnv(promHostKey)
 	promToken, promTokenPresent = os.LookupEnv(promTokenKey)
 	if !promHostPresent {
@@ -84,7 +83,8 @@ func NewPromClient() (watcher.FetcherClient, error) {
 	}
 
 	if err != nil {
-		fmt.Printf("Error creating prometheus client: %v\n", err)
+		log.Errorf("Error creating prometheus client: %v\n", err)
+		return nil, err
 	}
 
 	return promClient{client}, err
@@ -96,28 +96,42 @@ func (s promClient) Name() string {
 
 func (s promClient) FetchHostMetrics(host string, window *watcher.Window) ([]watcher.Metric, error) {
 	var metricList []watcher.Metric
-
-	for _, method := range []string{prom_avg_method, prom_std_method} {
-		for _, metric := range []string{prom_cpu_metric, prom_mem_metric} {
+	var anyerr error
+	for _, method := range []string{promAvg, promStd} {
+		for _, metric := range []string{promCpuMetric, promMemMetric} {
 			promQuery := s.buildPromQuery(host, metric, method, window.Duration)
-			promResults := s.getPromRsts(promQuery)
-			curMetricMap := s.promRsts2MetricMap(promResults, metric, method, window.Duration)
+			promResults, err := s.getPromResults(promQuery)
+
+			if err != nil {
+				log.Errorf("Error querying Prometheus for query %v: %v\n", promQuery, err)
+				anyerr = err
+				continue
+			}
+
+			curMetricMap := s.promResults2MetricMap(promResults, metric, method, window.Duration)
 			metricList = append(metricList, curMetricMap[host]...)
 		}
 	}
 
-	return metricList, nil
+	return metricList, anyerr
 }
 
-// Fetch all host metrics for all methods and resource types
+// Fetch all host metrics with different operators (avg_over_time, stddev_over_time) and diffrent resource types (CPU, Memory)
 func (s promClient) FetchAllHostsMetrics(window *watcher.Window) (map[string][]watcher.Metric, error) {
 	hostMetrics := make(map[string][]watcher.Metric)
+	var anyerr error
+	for _, method := range []string{promAvg, promStd} {
+		for _, metric := range []string{promCpuMetric, promMemMetric} {
+			promQuery := s.buildPromQuery(allHosts, metric, method, window.Duration)
+			promResults, err := s.getPromResults(promQuery)
 
-	for _, method := range []string{prom_avg_method, prom_std_method} {
-		for _, metric := range []string{prom_cpu_metric, prom_mem_metric} {
-			promQuery := s.buildPromQuery(all_hosts, metric, method, window.Duration)
-			promResults := s.getPromRsts(promQuery)
-			curMetricMap := s.promRsts2MetricMap(promResults, metric, method, window.Duration)
+			if err != nil {
+				log.Errorf("Error querying Prometheus for query %v: %v\n", promQuery, err)
+				anyerr = err
+				continue
+			}
+
+			curMetricMap := s.promResults2MetricMap(promResults, metric, method, window.Duration)
 
 			for k, v := range curMetricMap {
 				hostMetrics[k] = append(hostMetrics[k], v...)
@@ -125,58 +139,55 @@ func (s promClient) FetchAllHostsMetrics(window *watcher.Window) (map[string][]w
 		}
 	}
 
-	return hostMetrics, nil
+	return hostMetrics, anyerr
 }
 
 func (s promClient) buildPromQuery(host string, metric string, method string, rollup string) string {
 	var promQuery string
-	if host == all_hosts {
+	if host == allHosts {
 		promQuery = fmt.Sprintf("%s(%s[%s])", method, metric, rollup)
 	} else {
-		promQuery = fmt.Sprintf("%s(%s{instance=\"%s\"}[%s])", method, metric, host, rollup)
+		promQuery = fmt.Sprintf("%s(%s{%s=\"%s\"}[%s])", method, metric, hostMetricKey, host, rollup)
 	}
 
 	return promQuery
 }
 
-func (s promClient) getPromRsts(promQuery string) model.Value {
+func (s promClient) getPromResults(promQuery string) (model.Value, error) {
 	v1api := v1.NewAPI(s.client)
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	results, warnings, err := v1api.Query(ctx, promQuery, time.Now())
 	if err != nil {
-		fmt.Printf("Error querying Prometheus: %v\n", err)
-		os.Exit(1)
+		return nil, err
 	}
 	if len(warnings) > 0 {
-		fmt.Printf("Warnings: %v\n", warnings)
+		log.Warnf("Warnings: %v\n", warnings)
 	}
-	fmt.Printf("Result:\n%v\n", results.Type())
-
-	return results
+	log.Debugf("Result:\n%v\n", results)
+	return results, nil
 }
 
-
-func (s promClient) promRsts2MetricMap(promrst model.Value, metric string, method string, rollup string) map[string][]watcher.Metric {
+func (s promClient) promResults2MetricMap(promresults model.Value, metric string, method string, rollup string) map[string][]watcher.Metric {
 	var metric_type string
 	curMetrics := make(map[string][]watcher.Metric)
 
-	if metric == prom_cpu_metric {
+	if metric == promCpuMetric {
 		metric_type = watcher.CPU
 	} else {
 		metric_type = watcher.Memory
 	}
 
-	switch promrst.(type) {
+	switch promresults.(type) {
 	case model.Vector:
-		for _, result := range promrst.(model.Vector) {
+		for _, result := range promresults.(model.Vector) {
 			curMetric := watcher.Metric{metric, metric_type, method, rollup, float64(result.Value)}
-			curHost := string(result.Metric["instance"])
+			curHost := string(result.Metric[hostMetricKey])
 			curMetrics[curHost] = append(curMetrics[curHost], curMetric)
 		}
 	default:
-		panic(fmt.Sprintf("The Prometheus results should not be type: %v.", promrst.Type()))
+		log.Errorf("Error: The Prometheus results should not be type: %v.\n", promresults.Type())
 	}
 
 	return curMetrics
