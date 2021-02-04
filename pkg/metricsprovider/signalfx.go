@@ -34,6 +34,7 @@ import (
 
 const (
 	// SignalFX Request Params
+	signalFxClientName			   = "signalFx"
 	signalFxBaseUrl        = "https://api.pypl-us0.signalfx.com/v1/timeserieswindow"
 	// SignalFx adds a suffix to hostnames if configured
 	signalFxHostNameSuffix = ".group.region.gcp.com"
@@ -62,6 +63,10 @@ func NewSignalFxClient() (watcher.FetcherClient, error) {
 	return signalFxClient{client: http.Client{
 		Timeout:   httpClientTimeout,
 		Transport: tlsConfig}}, nil
+}
+
+func (s signalFxClient) Name() string {
+	return signalFxClientName
 }
 
 func (s signalFxClient) FetchHostMetrics(host string, window *watcher.Window) ([]watcher.Metric, error) {

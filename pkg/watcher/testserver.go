@@ -77,6 +77,10 @@ const (
 type testServerClient struct {
 }
 
+func (t testServerClient) Name() string {
+	panic("implement me")
+}
+
 func NewTestMetricsServerClient() FetcherClient {
 	return testServerClient{}
 }

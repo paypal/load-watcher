@@ -17,14 +17,14 @@ limitations under the License.
 package main
 
 import (
-	"log"
-
 	"github.com/paypal/load-watcher/pkg/metricsprovider"
 	"github.com/paypal/load-watcher/pkg/watcher"
+	"log"
 )
 
 func main() {
-	client, err := metricsprovider.NewMetricsServerClient()
+	// client, err := metricsprovider.NewMetricsServerClient()
+	client, err := metricsprovider.NewPromClient()
 	if err != nil {
 		log.Fatalf("unable to create new client: %v", err)
 	}

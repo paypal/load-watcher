@@ -36,6 +36,7 @@ var (
 )
 
 const (
+	k8sClientName = "k8s"
 	// env variable that provides path to kube config file, if deploying from outside K8s cluster
 	kubeConfig = "KUBE_CONFIG"
 )
@@ -77,6 +78,11 @@ func NewMetricsServerClient() (watcher.FetcherClient, error) {
 		metricsClientSet: metricsClientSet,
 		coreClientSet:    clientSet}, nil
 }
+
+func (m metricsServerClient) Name() string {
+	return k8sClientName
+}
+
 
 func (m metricsServerClient) FetchHostMetrics(host string, window *watcher.Window) ([]watcher.Metric, error) {
 	var metrics = []watcher.Metric{}
