@@ -18,6 +18,8 @@ package watcher
 
 // Interface to be implemented by any metrics provider client to interact with Watcher
 type FetcherClient interface {
+	// Return the client name
+	Name() string
 	// Fetch metrics for given host
 	FetchHostMetrics(host string, window *Window) ([]Metric, error)
 	// Fetch metrics for all hosts

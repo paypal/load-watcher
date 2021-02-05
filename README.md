@@ -7,6 +7,7 @@ The following metrics provider clients are currently supported:
 
 1) SignalFx
 2) Kubernetes Metrics Server
+3) Prometheus
 
 These clients fetch CPU usage currently, support for other resources will be added later as needed.
 
@@ -45,3 +46,12 @@ GET /watcher
 ```
 
 This will return metrics for all nodes. A query parameter to filter by host can be added with `host`.
+
+## Client Configuration
+- To use the Kubernetes metric server client out of a cluster, please configure your `KUBE_CONFIG` environment varirables to your 
+kubernetes client configuration file path.
+
+- To use the prometheus client out of a cluster, please configure `PROM_HOST` and `PROM_TOKEN` environment variables to
+your Prometheus endpoint and token. Please ignore `PROM_TOKEN` as empty string if no authentication is needed to access
+  the Prometheus APIs. When using the prometheus in a cluster, the default endpoint is `prometheus-k8s:9090`. You need to 
+  configure `PROM_HOST` if your Prometheus endpoint is different.

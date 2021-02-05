@@ -24,7 +24,8 @@ import (
 )
 
 func main() {
-	client, err := metricsprovider.NewMetricsServerClient()
+	// client, err := metricsprovider.NewMetricsServerClient()
+	client, err := metricsprovider.NewPromClient()
 	if err != nil {
 		log.Fatalf("unable to create new client: %v", err)
 	}

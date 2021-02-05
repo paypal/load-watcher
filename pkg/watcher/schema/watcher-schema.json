@@ -45,6 +45,9 @@
                     "type": {
                       "type": "string"
                     },
+                    "operator": {
+                      "type": "string"
+                    },
                     "rollup": {
                       "type": "string"
                     },
@@ -56,6 +59,7 @@
                   "required": [
                     "name",
                     "type",
+                    "operator",
                     "rollup",
                     "value"
                   ]
@@ -69,6 +73,9 @@
                     "type": {
                       "type": "string"
                     },
+                    "operator": {
+                      "type": "string"
+                    },
                     "rollup": {
                       "type": "string"
                     },
@@ -80,6 +87,7 @@
                   "required": [
                     "name",
                     "type",
+                    "operator",
                     "rollup",
                     "value"
                   ]
