@@ -4,11 +4,10 @@ import (
 	"github.com/paypal/load-watcher/pkg/watcher"
 )
 
-
 type Client interface {
 	// Return the client name
 	Name() string
-	// Fetch metrics for given host
+	// Get the recent metrics from all types of monitoring stack
 	GetRecentMetrics() (watcher.WatcherMetrics, error)
 }
 

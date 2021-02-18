@@ -42,7 +42,6 @@ const (
 	hostMetricKey  = "instance"
 )
 
-
 type promClient struct {
 	client api.Client
 }

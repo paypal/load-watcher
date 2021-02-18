@@ -31,7 +31,6 @@ const (
 	watcherQuery = "/watcher"
 	defaultRetries = 3
 	loadwatcherClientTimeout = 55 * time.Second
-
 )
 
 var (
