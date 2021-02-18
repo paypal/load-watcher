@@ -35,7 +35,7 @@ import (
 const (
 	// SignalFX Request Params
 	signalFxClientName			   = "signalFx"
-	signalFxBaseUrl        = "https://api.pypl-us0.signalfx.com/v1/timeserieswindow"
+	signalFxBaseUrl        = "https://api.signalfx.com/v1/timeserieswindow"
 	// SignalFx adds a suffix to hostnames if configured
 	signalFxHostNameSuffix = ".group.region.gcp.com"
 	signalFxHostFilter     = "host:"
