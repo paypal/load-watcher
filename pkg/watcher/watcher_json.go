@@ -95,6 +95,7 @@ func (m *Metadata) NKeys() int { return 1 }
 func (m *Metric) MarshalJSONObject(enc *gojay.Encoder) {
 	enc.StringKey("name", m.Name)
 	enc.StringKey("type", m.Type)
+	enc.StringKey("operator", m.Operator)
 	enc.StringKey("rollup", m.Rollup)
 	enc.Float64Key("value", m.Value)
 }
@@ -114,6 +115,9 @@ func (m *Metric) UnmarshalJSONObject(dec *gojay.Decoder, k string) error {
 	case "type":
 		return dec.String(&m.Type)
 
+	case "operator":
+		return dec.String(&m.Operator)
+
 	case "rollup":
 		return dec.String(&m.Rollup)
 
@@ -125,7 +129,7 @@ func (m *Metric) UnmarshalJSONObject(dec *gojay.Decoder, k string) error {
 }
 
 // NKeys returns the number of keys to unmarshal
-func (m *Metric) NKeys() int { return 4 }
+func (m *Metric) NKeys() int { return 5 }
 
 // MarshalJSONObject implements MarshalerJSONObject
 func (m *NodeMetrics) MarshalJSONObject(enc *gojay.Encoder) {

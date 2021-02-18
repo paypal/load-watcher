@@ -17,18 +17,21 @@ limitations under the License.
 package main
 
 import (
+	"github.com/paypal/load-watcher/pkg/utils"
 	"log"
 
-	"github.com/paypal/load-watcher/pkg/metricsprovider"
+	"github.com/paypal/load-watcher/pkg/client"
 	"github.com/paypal/load-watcher/pkg/watcher"
 )
 
+
 func main() {
-	client, err := metricsprovider.NewMetricsServerClient()
+	utils.InitEnvVars()
+	cl, err := client.NewFetcherClient(utils.MetricProviderType, utils.MetricEndpoint, utils.MetricAuthToken)
 	if err != nil {
 		log.Fatalf("unable to create new client: %v", err)
 	}
-	w := watcher.NewWatcher(client)
+	w := watcher.NewWatcher(cl.Fetcher)
 	w.StartWatching()
 	select {}
 }

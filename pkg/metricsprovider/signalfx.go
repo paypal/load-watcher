@@ -28,13 +28,13 @@ import (
 	"time"
 
 	"github.com/paypal/load-watcher/pkg/watcher"
-
 	log "github.com/sirupsen/logrus"
 )
 
 const (
 	// SignalFX Request Params
-	signalFxBaseUrl        = "https://api.pypl-us0.signalfx.com/v1/timeserieswindow"
+	SignalFxClientName			   = "signalFx"
+	DefaultSignalFxEndpoint        = "https://api.pypl-us0.signalfx.com/v1/timeserieswindow"
 	// SignalFx adds a suffix to hostnames if configured
 	signalFxHostNameSuffix = ".group.region.gcp.com"
 	signalFxHostFilter     = "host:"
@@ -51,17 +51,30 @@ const (
 	httpClientTimeout = 55 * time.Second
 )
 
+var signalFxEndpoint string
+
 type signalFxClient struct {
 	client http.Client
 }
 
-func NewSignalFxClient() (watcher.FetcherClient, error) {
+func NewSignalFxClient(signalfxurl string) (watcher.FetcherClient, error) {
 	tlsConfig := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
+
+	if signalfxurl != "" {
+		signalFxEndpoint = signalfxurl
+	} else {
+		signalFxEndpoint = DefaultSignalFxEndpoint
+	}
+
 	return signalFxClient{client: http.Client{
 		Timeout:   httpClientTimeout,
 		Transport: tlsConfig}}, nil
+}
+
+func (s signalFxClient) Name() string {
+	return SignalFxClientName
 }
 
 func (s signalFxClient) FetchHostMetrics(host string, window *watcher.Window) ([]watcher.Metric, error) {
@@ -93,6 +106,9 @@ func (s signalFxClient) FetchHostMetrics(host string, window *watcher.Window) ([
 		}
 
 		var fetchedMetric watcher.Metric
+		// Added default operator and rollup for signalfx client.
+		fetchedMetric.Operator = watcher.Average
+		fetchedMetric.Rollup = window.Duration
 		if metric == cpuUtilizationMetric {
 			fetchedMetric.Name = cpuUtilizationMetric
 			fetchedMetric.Type = watcher.CPU
@@ -106,6 +122,7 @@ func (s signalFxClient) FetchHostMetrics(host string, window *watcher.Window) ([
 		}
 		metrics = append(metrics, fetchedMetric)
 	}
+
 	return metrics, nil
 }
 
@@ -115,7 +132,7 @@ func (s signalFxClient) FetchAllHostsMetrics(window *watcher.Window) (map[string
 }
 
 func buildMetricURL(host string, metric string, window *watcher.Window) (uri *url.URL, err error) {
-	uri, err = url.Parse(signalFxBaseUrl)
+	uri, err = url.Parse(signalFxEndpoint)
 	if err != nil {
 		return nil, err
 	}

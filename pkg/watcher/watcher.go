@@ -40,8 +40,13 @@ const (
 	FifteenMinutes = "15m"
 	TenMinutes     = "10m"
 	FiveMinutes    = "5m"
+	OneMinute    = "1m"
 	CPU            = "CPU"
 	Memory         = "Memory"
+	Average		   = "AVG"
+	Std		   	   = "STD"
+	Latest		   = "Latest"
+	UnknownOperator = "Unknown"
 )
 
 type Watcher struct {
@@ -64,6 +69,7 @@ type Window struct {
 type Metric struct {
 	Name   string  `json:"name"`             // Name of metric at the provider
 	Type   string  `json:"type"`             // CPU or Memory
+	Operator string  `json:"operator"`       // STD or AVE or SUM, etc.
 	Rollup string  `json:"rollup,omitempty"` // Rollup used for metric calculation
 	Value  float64 `json:"value"`            // Value is expected to be in %
 }
@@ -117,27 +123,25 @@ func (w *Watcher) StartWatching() {
 	}
 	w.mutex.RUnlock()
 
+	fetchOnce := func(duration string) {
+		curWindow, metric := w.getCurrentWindow(duration)
+		hostMetrics, err := w.client.FetchAllHostsMetrics(curWindow)
+
+		if err != nil {
+			log.Errorf("received error while fetching metrics: %v ", err)
+			return
+		}
+		log.Debugf("fetched metrics for window: %v", curWindow)
+
+		// TODO： add tags, etc.
+		watcherMetrics := MetricListMap2NodeMetricMap(hostMetrics, w.client.Name(), *curWindow)
+
+		w.appendWatcherMetrics(metric, &watcherMetrics)
+	}
+
 	windowWatcher := func(duration string) {
 		for {
-			curWindow, metric := w.getCurrentWindow(duration)
-			fetchedMetricsMap, err := w.client.FetchAllHostsMetrics(curWindow)
-			if err != nil {
-				log.Errorf("received error while fetching metrics: %v ", err)
-				continue
-			}
-			log.Debugf("fetched metrics for window: %v", curWindow)
-			metricsMap := make(map[string]NodeMetrics)
-			for host, fetchedMetrics := range fetchedMetricsMap {
-				nodeMetric := NodeMetrics{
-					Metrics: make([]Metric, len(fetchedMetrics)),
-				}
-				copy(nodeMetric.Metrics, fetchedMetrics)
-				metricsMap[host] = nodeMetric
-			}
-			watcherMetrics := &WatcherMetrics{Timestamp: time.Now().Unix(),
-				Data: Data{NodeMetricsMap: metricsMap},
-			}
-			w.appendWatcherMetrics(metric, watcherMetrics)
+			fetchOnce(duration)
 			time.Sleep(time.Minute) // This is assuming fetching of metrics won't exceed more than 1 minute. If it happens we need to throttle rate of fetches
 		}
 	}
@@ -181,6 +185,7 @@ func (w *Watcher) GetLatestWatcherMetrics(duration string) (*WatcherMetrics, err
 	if !w.isStarted {
 		return nil, errors.New("need to call StartWatching() first!")
 	}
+
 	switch {
 	case duration == FifteenMinutes && len(w.fifteenMinute) > 0:
 		return w.deepCopyWatcherMetrics(&w.fifteenMinute[len(w.fifteenMinute)-1]), nil
@@ -292,6 +297,43 @@ func (w *Watcher) handler(resp http.ResponseWriter, r *http.Request) {
 }
 
 // Utility functions
+
+// Convert map[string]watcher.Metric to watcher.WatcherMetrics
+func MetricList2NodeMetricMap(host string, metricList []Metric, clientName string, window Window) WatcherMetrics {
+	metricsMap := make(map[string]NodeMetrics)
+
+	nodeMetric := NodeMetrics{
+		Metrics: make([]Metric, len(metricList)),
+	}
+	copy(nodeMetric.Metrics, metricList)
+	metricsMap[host] = nodeMetric
+
+	watcherMetrics := WatcherMetrics{Timestamp: time.Now().Unix(),
+		Data: Data{NodeMetricsMap: metricsMap},
+		Source: clientName,
+		Window: window,
+	}
+
+	return watcherMetrics
+}
+
+func MetricListMap2NodeMetricMap(metricMap map[string][]Metric, clientName string, window Window) WatcherMetrics{
+	metricsMap := make(map[string]NodeMetrics)
+	for host, metricList := range metricMap {
+		nodeMetric := NodeMetrics{
+			Metrics: make([]Metric, len(metricList)),
+		}
+		copy(nodeMetric.Metrics, metricList)
+		metricsMap[host] = nodeMetric
+	}
+
+	watcherMetrics := WatcherMetrics{Timestamp: time.Now().Unix(),
+		Data: Data{NodeMetricsMap: metricsMap},
+		Source: clientName,
+		Window: window,
+	}
+	return watcherMetrics
+}
 
 func CurrentFifteenMinuteWindow() *Window {
 	curTime := time.Now().Unix()
