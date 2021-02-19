@@ -17,10 +17,10 @@ limitations under the License.
 package main
 
 import (
-	"github.com/paypal/load-watcher/pkg/utils"
 	"log"
 
 	"github.com/paypal/load-watcher/pkg/client"
+	"github.com/paypal/load-watcher/pkg/utils"
 	"github.com/paypal/load-watcher/pkg/watcher"
 )
 
