@@ -136,6 +136,7 @@ func (m metricsServerClient) FetchAllHostsMetrics(window *watcher.Window) (map[s
 			log.Errorf("unable to find host %v in node list caching cpu capacity", host.Name)
 			continue
 		}
+
 		cpuFetchedMetric.Value = float64(100*host.Usage.Cpu().MilliValue()) / float64(cpuNodeCapacityMap[host.Name])
 		metrics[host.Name] = append(metrics[host.Name], cpuFetchedMetric)
 

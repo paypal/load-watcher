@@ -46,6 +46,7 @@ type promClient struct {
 	client api.Client
 }
 
+
 func NewPromClient(promEndpoint string, promAuthToken string) (watcher.FetcherClient, error) {
 	var client api.Client
 	var err error
@@ -155,6 +156,7 @@ func (s promClient) getPromResults(promQuery string) (model.Value, error) {
 func (s promClient) promResults2MetricMap(promresults model.Value, metric string, method string, rollup string) map[string][]watcher.Metric {
 	var metric_type string
 	var operator string
+
 	curMetrics := make(map[string][]watcher.Metric)
 
 	if metric == promCpuMetric {

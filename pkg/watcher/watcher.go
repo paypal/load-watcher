@@ -135,7 +135,6 @@ func (w *Watcher) StartWatching() {
 
 		// TODO： add tags, etc.
 		watcherMetrics := MetricListMap2NodeMetricMap(hostMetrics, w.client.Name(), *curWindow)
-
 		w.appendWatcherMetrics(metric, &watcherMetrics)
 	}
 
