@@ -36,7 +36,6 @@ var (
 )
 
 const (
-	K8sClientName = "k8s"
 	// env variable that provides path to kube config file, if deploying from outside K8s cluster
 	kubeConfig = "KUBE_CONFIG"
 )
@@ -54,10 +53,10 @@ type metricsServerClient struct {
 	// This client fetches node metrics from metric server
 	metricsClientSet *metricsv.Clientset
 	// This client fetches node capacity
-	coreClientSet    *kubernetes.Clientset
+	coreClientSet *kubernetes.Clientset
 }
 
-func NewMetricsServerClient() (watcher.FetcherClient, error) {
+func NewMetricsServerClient() (watcher.MetricsProviderClient, error) {
 	var config *rest.Config
 	var err error
 	kubeConfig := ""
@@ -80,7 +79,7 @@ func NewMetricsServerClient() (watcher.FetcherClient, error) {
 }
 
 func (m metricsServerClient) Name() string {
-	return K8sClientName
+	return watcher.K8sClientName
 }
 
 func (m metricsServerClient) FetchHostMetrics(host string, window *watcher.Window) ([]watcher.Metric, error) {
@@ -122,6 +121,7 @@ func (m metricsServerClient) FetchAllHostsMetrics(window *watcher.Window) (map[s
 	if err != nil {
 		return metrics, err
 	}
+
 	cpuNodeCapacityMap := make(map[string]int64)
 	memNodeCPUCapacityMap := make(map[string]int64)
 	for _, host := range nodeList.Items {

@@ -47,18 +47,13 @@ GET /watcher
 
 This will return metrics for all nodes. A query parameter to filter by host can be added with `host`.
 
-## Third Party Client Configuration
-- To use the Kubernetes metric server client, please configure environment varirables `METRIC_CLIENT=k8s` and your `KUBE_CONFIG` to your 
-kubernetes client configuration file path if running out of cluster.
+## Metrics Provider Configuration
+- By default Kubernetes Metrics Server client is configured. Set `KUBE_CONFIG` env var to your kubernetes client configuration file path if running out of cluster.
 
-- To use the prometheus client, please configure environment variables as `METRIC_CLIENT=prometheus`, and configure 
-  `METRIC_HOST` and `METRIC_AUTH_TOKEN` to  your Prometheus endpoint and token. Please ignore `PROM_TOKEN` as empty string if no authentication 
-  is needed to access the Prometheus APIs. When using the prometheus in a cluster, the default endpoint is
-  `http://prometheus-k8s.monitoring.svc.cluster.local:9090`. You need to  configure `PROM_HOST` if your Prometheus endpoint is different.
+- To use the Prometheus client, please configure environment variables `METRICS_PROVIDER_NAME`, `METRICS_PROVIDER_ADDRESS` and `METRICS_PROVIDER_TOKEN` to `Prometheus`, Prometheus address and auth token. Please do not set `METRICS_PROVIDER_TOKEN` if no authentication 
+  is needed to access the Prometheus APIs. Default value of address set is `http://prometheus-k8s:9090` for Prometheus client.
 
-- To use the signalFx client, please configure environment variables as `METRIC_CLIENT=signalfx`, and configure
-  `METRIC_HOST` and `METRIC_AUTH_TOKEN` to  your signalFx endpoint and token. Please ignore `METRIC_AUTH_TOKEN` as empty string if no authentication
-  is needed to access the signalFx APIs.
+- To use the SignalFx client, please configure `METRICS_PROVIDER_NAME`, `METRICS_PROVIDER_ADDRESS` and `METRICS_PROVIDER_TOKEN` to `SignalFx`, SignalFx address and auth token respectively. Default value of address set is `https://api.signalfx.com` for Prometheus client.
   
 ## Deploy `load-watcher` as a service
 To deploy `load-watcher` as a monitoring service in your Kubernetes cluster, you can run the following.

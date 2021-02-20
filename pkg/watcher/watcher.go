@@ -16,7 +16,7 @@ limitations under the License.
 
 /*
 	Package Watcher is responsible for watching latest metrics from metrics provider via a fetcher client.
-	It exposes an HTTP REST endpoint to get these metrics, in addition to application API
+	It exposes an HTTP REST endpoint to get these metrics, in addition to application API via clients
 	This also uses a fast json parser
 */
 package watcher
@@ -36,16 +36,15 @@ import (
 )
 
 const (
-	baseUrl        = "/watcher"
-	FifteenMinutes = "15m"
-	TenMinutes     = "10m"
-	FiveMinutes    = "5m"
-	OneMinute    = "1m"
-	CPU            = "CPU"
-	Memory         = "Memory"
-	Average		   = "AVG"
-	Std		   	   = "STD"
-	Latest		   = "Latest"
+	BaseUrl         = "/watcher"
+	FifteenMinutes  = "15m"
+	TenMinutes      = "10m"
+	FiveMinutes     = "5m"
+	CPU             = "CPU"
+	Memory          = "Memory"
+	Average         = "AVG"
+	Std             = "STD"
+	Latest          = "Latest"
 	UnknownOperator = "Unknown"
 )
 
@@ -55,7 +54,7 @@ type Watcher struct {
 	tenMinute     []WatcherMetrics
 	fiveMinute    []WatcherMetrics
 	cacheSize     int
-	client        FetcherClient
+	client        MetricsProviderClient
 	isStarted     bool // Indicates if the Watcher is started by calling StartWatching()
 	shutdown      chan os.Signal
 }
@@ -67,11 +66,11 @@ type Window struct {
 }
 
 type Metric struct {
-	Name   string  `json:"name"`             // Name of metric at the provider
-	Type   string  `json:"type"`             // CPU or Memory
-	Operator string  `json:"operator"`       // STD or AVE or SUM, etc.
-	Rollup string  `json:"rollup,omitempty"` // Rollup used for metric calculation
-	Value  float64 `json:"value"`            // Value is expected to be in %
+	Name     string  `json:"name"`             // Name of metric at the provider
+	Type     string  `json:"type"`             // CPU or Memory
+	Operator string  `json:"operator"`         // STD or AVE or SUM, etc.
+	Rollup   string  `json:"rollup,omitempty"` // Rollup used for metric calculation
+	Value    float64 `json:"value"`            // Value is expected to be in %
 }
 
 type NodeMetricsMap map[string]NodeMetrics
@@ -101,7 +100,7 @@ type NodeMetrics struct {
 }
 
 // Returns a new initialised Watcher
-func NewWatcher(client FetcherClient) *Watcher {
+func NewWatcher(client MetricsProviderClient) *Watcher {
 	sizePerWindow := 5
 	return &Watcher{
 		mutex:         sync.RWMutex{},
@@ -128,13 +127,13 @@ func (w *Watcher) StartWatching() {
 		hostMetrics, err := w.client.FetchAllHostsMetrics(curWindow)
 
 		if err != nil {
-			log.Errorf("received error while fetching metrics: %v ", err)
+			log.Errorf("received error while fetching metrics: %v", err)
 			return
 		}
 		log.Debugf("fetched metrics for window: %v", curWindow)
 
 		// TODO： add tags, etc.
-		watcherMetrics := MetricListMap2NodeMetricMap(hostMetrics, w.client.Name(), *curWindow)
+		watcherMetrics := metricMapToWatcherMetrics(hostMetrics, w.client.Name(), *curWindow)
 		w.appendWatcherMetrics(metric, &watcherMetrics)
 	}
 
@@ -150,7 +149,7 @@ func (w *Watcher) StartWatching() {
 		go windowWatcher(duration)
 	}
 
-	http.HandleFunc(baseUrl, w.handler)
+	http.HandleFunc(BaseUrl, w.handler)
 	server := &http.Server{
 		Addr:    ":2020",
 		Handler: http.DefaultServeMux,
@@ -176,7 +175,7 @@ func (w *Watcher) StartWatching() {
 	w.mutex.Unlock()
 }
 
-// Returns latest metrics present in load Watcher cache. StartWatching() should be called before calling this.
+// StartWatching() should be called before calling this.
 // It starts from 15 minute window, and falls back to 10 min, 5 min windows subsequently if metrics are not present
 func (w *Watcher) GetLatestWatcherMetrics(duration string) (*WatcherMetrics, error) {
 	w.mutex.RLock()
@@ -247,7 +246,7 @@ func (w *Watcher) deepCopyWatcherMetrics(src *WatcherMetrics) *WatcherMetrics {
 	}
 }
 
-// HTTP Handler for baseUrl endpoint
+// HTTP Handler for BaseUrl endpoint
 func (w *Watcher) handler(resp http.ResponseWriter, r *http.Request) {
 	resp.Header().Set("Content-Type", "application/json")
 
@@ -297,26 +296,7 @@ func (w *Watcher) handler(resp http.ResponseWriter, r *http.Request) {
 
 // Utility functions
 
-// Convert map[string]watcher.Metric to watcher.WatcherMetrics
-func MetricList2NodeMetricMap(host string, metricList []Metric, clientName string, window Window) WatcherMetrics {
-	metricsMap := make(map[string]NodeMetrics)
-
-	nodeMetric := NodeMetrics{
-		Metrics: make([]Metric, len(metricList)),
-	}
-	copy(nodeMetric.Metrics, metricList)
-	metricsMap[host] = nodeMetric
-
-	watcherMetrics := WatcherMetrics{Timestamp: time.Now().Unix(),
-		Data: Data{NodeMetricsMap: metricsMap},
-		Source: clientName,
-		Window: window,
-	}
-
-	return watcherMetrics
-}
-
-func MetricListMap2NodeMetricMap(metricMap map[string][]Metric, clientName string, window Window) WatcherMetrics{
+func metricMapToWatcherMetrics(metricMap map[string][]Metric, clientName string, window Window) WatcherMetrics {
 	metricsMap := make(map[string]NodeMetrics)
 	for host, metricList := range metricMap {
 		nodeMetric := NodeMetrics{
@@ -327,7 +307,7 @@ func MetricListMap2NodeMetricMap(metricMap map[string][]Metric, clientName strin
 	}
 
 	watcherMetrics := WatcherMetrics{Timestamp: time.Now().Unix(),
-		Data: Data{NodeMetricsMap: metricsMap},
+		Data:   Data{NodeMetricsMap: metricsMap},
 		Source: clientName,
 		Window: window,
 	}

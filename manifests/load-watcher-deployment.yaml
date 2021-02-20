@@ -20,7 +20,7 @@ spec:
       - name: watcher
         image: chenw/load-watcher:latest
         env:
-        - name: METRIC_CLIENT
+        - name: METRICS_PROVIDER_NAME
           value: prometheus
         ports:
         - containerPort: 2020
@@ -34,7 +34,6 @@ metadata:
   labels:
     app: load-watcher
 spec:
-  externalTrafficPolicy: Local
   ports:
   - name: http
     port: 2020
@@ -42,4 +41,3 @@ spec:
     targetPort: 2020
   selector:
     app: load-watcher
-  type: LoadBalancer

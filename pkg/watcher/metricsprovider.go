@@ -16,12 +16,45 @@ limitations under the License.
 
 package watcher
 
+import "os"
+
+const (
+	K8sClientName      = "KubernetesMetricsServer"
+	PromClientName     = "Prometheus"
+	SignalFxClientName = "SignalFx"
+
+	MetricsProviderNameKey    = "METRICS_PROVIDER_NAME"
+	MetricsProviderAddressKey = "METRICS_PROVIDER_ADDRESS"
+	MetricsProviderTokenKey   = "METRICS_PROVIDER_TOKEN"
+)
+
+var (
+	EnvMetricProviderOpts MetricsProviderOpts
+)
+
+func init() {
+	var ok bool
+	EnvMetricProviderOpts.Name, ok = os.LookupEnv(MetricsProviderNameKey)
+	if !ok {
+		EnvMetricProviderOpts.Name = K8sClientName
+	}
+	EnvMetricProviderOpts.Address, ok = os.LookupEnv(MetricsProviderAddressKey)
+	EnvMetricProviderOpts.AuthToken, ok = os.LookupEnv(MetricsProviderTokenKey)
+}
+
 // Interface to be implemented by any metrics provider client to interact with Watcher
-type FetcherClient interface {
+type MetricsProviderClient interface {
 	// Return the client name
 	Name() string
 	// Fetch metrics for given host
 	FetchHostMetrics(host string, window *Window) ([]Metric, error)
 	// Fetch metrics for all hosts
 	FetchAllHostsMetrics(window *Window) (map[string][]Metric, error)
+}
+
+// Generic metrics provider options
+type MetricsProviderOpts struct {
+	Name      string
+	Address   string
+	AuthToken string
 }
