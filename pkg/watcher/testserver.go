@@ -67,11 +67,11 @@ var FiveMinutesMetricsMap = map[string][]Metric{
 	},
 }
 
-var _ FetcherClient = &testServerClient{}
+var _ MetricsProviderClient = &testServerClient{}
 
 const (
-	FirstNode  = "worker-1"
-	SecondNode = "worker-2"
+	FirstNode            = "worker-1"
+	SecondNode           = "worker-2"
 	TestServerClientName = "TestServerClient"
 )
 
@@ -82,7 +82,7 @@ func (t testServerClient) Name() string {
 	return TestServerClientName
 }
 
-func NewTestMetricsServerClient() FetcherClient {
+func NewTestMetricsServerClient() MetricsProviderClient {
 	return testServerClient{}
 }
 

@@ -36,7 +36,6 @@ var (
 )
 
 const (
-	k8sClientName = "k8s"
 	// env variable that provides path to kube config file, if deploying from outside K8s cluster
 	kubeConfig = "KUBE_CONFIG"
 )
@@ -54,10 +53,10 @@ type metricsServerClient struct {
 	// This client fetches node metrics from metric server
 	metricsClientSet *metricsv.Clientset
 	// This client fetches node capacity
-	coreClientSet    *kubernetes.Clientset
+	coreClientSet *kubernetes.Clientset
 }
 
-func NewMetricsServerClient() (watcher.FetcherClient, error) {
+func NewMetricsServerClient() (watcher.MetricsProviderClient, error) {
 	var config *rest.Config
 	var err error
 	kubeConfig := ""
@@ -80,7 +79,7 @@ func NewMetricsServerClient() (watcher.FetcherClient, error) {
 }
 
 func (m metricsServerClient) Name() string {
-	return k8sClientName
+	return watcher.K8sClientName
 }
 
 func (m metricsServerClient) FetchHostMetrics(host string, window *watcher.Window) ([]watcher.Metric, error) {
@@ -90,14 +89,24 @@ func (m metricsServerClient) FetchHostMetrics(host string, window *watcher.Windo
 	if err != nil {
 		return metrics, err
 	}
-	var fetchedMetric watcher.Metric
+	var cpuFetchedMetric watcher.Metric
+	var memFetchedMetric watcher.Metric
 	node, err := m.coreClientSet.CoreV1().Nodes().Get(context.Background(), host, metav1.GetOptions{})
 	if err != nil {
 		return metrics, err
 	}
-	fetchedMetric.Value = float64(100*nodeMetrics.Usage.Cpu().MilliValue()) / float64(node.Status.Capacity.Cpu().MilliValue())
-	fetchedMetric.Type = watcher.CPU
-	metrics = append(metrics, fetchedMetric)
+
+	// Added CPU latest metric
+	cpuFetchedMetric.Value = float64(100*nodeMetrics.Usage.Cpu().MilliValue()) / float64(node.Status.Capacity.Cpu().MilliValue())
+	cpuFetchedMetric.Type = watcher.CPU
+	cpuFetchedMetric.Operator = watcher.Latest
+	metrics = append(metrics, cpuFetchedMetric)
+
+	// Added Memory latest metric
+	memFetchedMetric.Value = float64(100*nodeMetrics.Usage.Memory().Value()) / float64(node.Status.Capacity.Memory().Value())
+	memFetchedMetric.Type = watcher.Memory
+	memFetchedMetric.Operator = watcher.Latest
+	metrics = append(metrics, memFetchedMetric)
 	return metrics, nil
 }
 
@@ -112,19 +121,35 @@ func (m metricsServerClient) FetchAllHostsMetrics(window *watcher.Window) (map[s
 	if err != nil {
 		return metrics, err
 	}
-	nodeCapacityMap := make(map[string]int64)
+
+	cpuNodeCapacityMap := make(map[string]int64)
+	memNodeCPUCapacityMap := make(map[string]int64)
 	for _, host := range nodeList.Items {
-		nodeCapacityMap[host.Name] = host.Status.Capacity.Cpu().MilliValue()
+		cpuNodeCapacityMap[host.Name] = host.Status.Capacity.Cpu().MilliValue()
+		memNodeCPUCapacityMap[host.Name] = host.Status.Capacity.Memory().Value()
 	}
 	for _, host := range nodeMetricsList.Items {
-		var fetchedMetric watcher.Metric
-		fetchedMetric.Type = watcher.CPU
-		if _, ok := nodeCapacityMap[host.Name]; !ok {
-			log.Errorf("unable to find host %v in node list", host.Name)
+		var cpuFetchedMetric watcher.Metric
+		cpuFetchedMetric.Type = watcher.CPU
+		cpuFetchedMetric.Operator = watcher.Latest
+		if _, ok := cpuNodeCapacityMap[host.Name]; !ok {
+			log.Errorf("unable to find host %v in node list caching cpu capacity", host.Name)
 			continue
 		}
-		fetchedMetric.Value = float64(100*host.Usage.Cpu().MilliValue()) / float64(nodeCapacityMap[host.Name])
-		metrics[host.Name] = append(metrics[host.Name], fetchedMetric)
+
+		cpuFetchedMetric.Value = float64(100*host.Usage.Cpu().MilliValue()) / float64(cpuNodeCapacityMap[host.Name])
+		metrics[host.Name] = append(metrics[host.Name], cpuFetchedMetric)
+
+		var memFetchedMetric watcher.Metric
+		memFetchedMetric.Type = watcher.Memory
+		memFetchedMetric.Operator = watcher.Latest
+		if _, ok := memNodeCPUCapacityMap[host.Name]; !ok {
+			log.Errorf("unable to find host %v in node list caching memory capacity", host.Name)
+			continue
+		}
+		memFetchedMetric.Value = float64(100*host.Usage.Memory().Value()) / float64(memNodeCPUCapacityMap[host.Name])
+		metrics[host.Name] = append(metrics[host.Name], memFetchedMetric)
 	}
+
 	return metrics, nil
 }

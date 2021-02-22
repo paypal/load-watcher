@@ -19,71 +19,60 @@ package metricsprovider
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/paypal/load-watcher/pkg/watcher"
-	log "github.com/sirupsen/logrus"
-	"github.com/prometheus/common/config"
 	"github.com/prometheus/client_golang/api"
 	v1 "github.com/prometheus/client_golang/api/prometheus/v1"
+	"github.com/prometheus/common/config"
 	"github.com/prometheus/common/model"
+	log "github.com/sirupsen/logrus"
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
 )
 
-var (
-	promHost    string
-	promToken	string
-	promTokenPresent = false
-	node_metric_query = map[string]string{
-		watcher.CPU : 	"instance:node_cpu:ratio",
-		watcher.Memory : "instance:node_memory_utilization:ratio",
-	}
-)
-
 const (
-	promClientName = "Prometheus"
-	promHostKey = "PROM_HOST"
-	promTokenKey = "PROM_TOKEN"
-	promStd = "stddev_over_time"
-	promAvg = "avg_over_time"
-	promCpuMetric = "instance:node_cpu:ratio"
-	promMemMetric = "instance:node_memory_utilisation:ratio"
-	allHosts = "all"
-	hostMetricKey = "instance"
+	DefaultPromAddress = "http://prometheus-k8s:9090"
+	promStd            = "stddev_over_time"
+	promAvg            = "avg_over_time"
+	promCpuMetric      = "instance:node_cpu:ratio"
+	promMemMetric      = "instance:node_memory_utilisation:ratio"
+	allHosts           = "all"
+	hostMetricKey      = "instance"
 )
-
-func init() {
-	var promHostPresent bool
-	promHost, promHostPresent = os.LookupEnv(promHostKey)
-	promToken, promTokenPresent = os.LookupEnv(promTokenKey)
-	if !promHostPresent {
-		promHost = "http://prometheus-k8s:9090"
-	}
-}
 
 type promClient struct {
 	client api.Client
 }
 
-func NewPromClient() (watcher.FetcherClient, error) {
+func NewPromClient(opts watcher.MetricsProviderOpts) (watcher.MetricsProviderClient, error) {
+	if opts.Name != watcher.PromClientName {
+		return nil, fmt.Errorf("metric provider name should be %v, found %v", watcher.PromClientName, opts.Name)
+	}
+
 	var client api.Client
 	var err error
+	var promToken, promAddress = "", DefaultPromAddress
+	if opts.AuthToken != "" {
+		promToken = opts.AuthToken
+	}
+	if opts.Address != "" {
+		promAddress = opts.Address
+	}
 
-	if !promTokenPresent {
+	if promToken != "" {
 		client, err = api.NewClient(api.Config{
-			Address: promHost,
+			Address:      promAddress,
+			RoundTripper: config.NewBearerAuthRoundTripper(config.Secret(opts.AuthToken), api.DefaultRoundTripper),
 		})
 	} else {
 		client, err = api.NewClient(api.Config{
-			Address: promHost,
-			RoundTripper: config.NewBearerAuthRoundTripper(config.Secret(promToken), api.DefaultRoundTripper),
+			Address: promAddress,
 		})
 	}
 
 	if err != nil {
-		log.Errorf("Error creating prometheus client: %v\n", err)
+		log.Errorf("error creating prometheus client: %v", err)
 		return nil, err
 	}
 
@@ -91,19 +80,20 @@ func NewPromClient() (watcher.FetcherClient, error) {
 }
 
 func (s promClient) Name() string {
-	return promClientName
+	return watcher.PromClientName
 }
 
 func (s promClient) FetchHostMetrics(host string, window *watcher.Window) ([]watcher.Metric, error) {
 	var metricList []watcher.Metric
 	var anyerr error
+
 	for _, method := range []string{promAvg, promStd} {
 		for _, metric := range []string{promCpuMetric, promMemMetric} {
 			promQuery := s.buildPromQuery(host, metric, method, window.Duration)
 			promResults, err := s.getPromResults(promQuery)
 
 			if err != nil {
-				log.Errorf("Error querying Prometheus for query %v: %v\n", promQuery, err)
+				log.Errorf("error querying Prometheus for query %v: %v\n", promQuery, err)
 				anyerr = err
 				continue
 			}
@@ -120,13 +110,14 @@ func (s promClient) FetchHostMetrics(host string, window *watcher.Window) ([]wat
 func (s promClient) FetchAllHostsMetrics(window *watcher.Window) (map[string][]watcher.Metric, error) {
 	hostMetrics := make(map[string][]watcher.Metric)
 	var anyerr error
+
 	for _, method := range []string{promAvg, promStd} {
 		for _, metric := range []string{promCpuMetric, promMemMetric} {
 			promQuery := s.buildPromQuery(allHosts, metric, method, window.Duration)
 			promResults, err := s.getPromResults(promQuery)
 
 			if err != nil {
-				log.Errorf("Error querying Prometheus for query %v: %v\n", promQuery, err)
+				log.Errorf("error querying Prometheus for query %v: %v\n", promQuery, err)
 				anyerr = err
 				continue
 			}
@@ -144,6 +135,7 @@ func (s promClient) FetchAllHostsMetrics(window *watcher.Window) (map[string][]w
 
 func (s promClient) buildPromQuery(host string, metric string, method string, rollup string) string {
 	var promQuery string
+
 	if host == allHosts {
 		promQuery = fmt.Sprintf("%s(%s[%s])", method, metric, rollup)
 	} else {
@@ -165,12 +157,15 @@ func (s promClient) getPromResults(promQuery string) (model.Value, error) {
 	if len(warnings) > 0 {
 		log.Warnf("Warnings: %v\n", warnings)
 	}
-	log.Debugf("Result:\n%v\n", results)
+	log.Debugf("result:\n%v\n", results)
+
 	return results, nil
 }
 
 func (s promClient) promResults2MetricMap(promresults model.Value, metric string, method string, rollup string) map[string][]watcher.Metric {
 	var metric_type string
+	var operator string
+
 	curMetrics := make(map[string][]watcher.Metric)
 
 	if metric == promCpuMetric {
@@ -179,15 +174,23 @@ func (s promClient) promResults2MetricMap(promresults model.Value, metric string
 		metric_type = watcher.Memory
 	}
 
+	if method == promAvg {
+		operator = watcher.Average
+	} else if method == promStd {
+		operator = watcher.Std
+	} else {
+		operator = watcher.UnknownOperator
+	}
+
 	switch promresults.(type) {
 	case model.Vector:
 		for _, result := range promresults.(model.Vector) {
-			curMetric := watcher.Metric{metric, metric_type, method, rollup, float64(result.Value)}
+			curMetric := watcher.Metric{metric, metric_type, operator, rollup, float64(result.Value * 100)}
 			curHost := string(result.Metric[hostMetricKey])
 			curMetrics[curHost] = append(curMetrics[curHost], curMetric)
 		}
 	default:
-		log.Errorf("Error: The Prometheus results should not be type: %v.\n", promresults.Type())
+		log.Errorf("error: The Prometheus results should not be type: %v.\n", promresults.Type())
 	}
 
 	return curMetrics
