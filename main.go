@@ -27,12 +27,31 @@ func main() {
 	if err != nil {
 		log.Fatalf("unable to create client: %v", err)
 	}
+
+	// Keep the watcher server up
+	watcher := watcher.NewWatcher(client.GetFetcher())
+	watcher.StartWatching()
+
+	// Test a dummy library client
 	metrics, err := client.GetLatestWatcherMetrics()
 	if err != nil {
 		log.Errorf("unable to get watcher metrics: %v", err)
 	}
 	log.Infof("received metrics: %v", metrics)
 
-	// Keep the watcher server up
+	/*
+	// Wait for 2 seconds for watcher to get data.
+	time.Sleep(2 * time.Second)
+
+	// Test a dummy service client
+	watcherAddress := "http://localhost:2020"
+	serviceclient, err := api.NewServiceClient(watcherAddress)
+	metrics, err = serviceclient.GetLatestWatcherMetrics()
+	if err != nil {
+		log.Errorf("unable to get watcher metrics: %v", err)
+	}
+	log.Infof("received metrics: %v", metrics)
+	*/
+
 	select {}
 }

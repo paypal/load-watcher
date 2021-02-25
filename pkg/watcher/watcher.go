@@ -133,7 +133,7 @@ func (w *Watcher) StartWatching() {
 		log.Debugf("fetched metrics for window: %v", curWindow)
 
 		// TODO： add tags, etc.
-		watcherMetrics := metricMapToWatcherMetrics(hostMetrics, w.client.Name(), *curWindow)
+		watcherMetrics := MetricMapToWatcherMetrics(hostMetrics, w.client.Name(), *curWindow)
 		w.appendWatcherMetrics(metric, &watcherMetrics)
 	}
 
@@ -296,7 +296,7 @@ func (w *Watcher) handler(resp http.ResponseWriter, r *http.Request) {
 
 // Utility functions
 
-func metricMapToWatcherMetrics(metricMap map[string][]Metric, clientName string, window Window) WatcherMetrics {
+func MetricMapToWatcherMetrics(metricMap map[string][]Metric, clientName string, window Window) WatcherMetrics {
 	metricsMap := make(map[string]NodeMetrics)
 	for host, metricList := range metricMap {
 		nodeMetric := NodeMetrics{

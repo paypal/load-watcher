@@ -34,7 +34,6 @@ const (
 // Client for Watcher APIs as a library
 type libraryClient struct {
 	fetcherClient watcher.MetricsProviderClient
-	watcher       *watcher.Watcher
 }
 
 // Client for Watcher APIs as a service
@@ -58,8 +57,7 @@ func NewLibraryClient(opts watcher.MetricsProviderOpts) (Client, error) {
 	if err != nil {
 		return client, err
 	}
-	client.watcher = watcher.NewWatcher(client.fetcherClient)
-	client.watcher.StartWatching()
+
 	return client, nil
 }
 
@@ -73,8 +71,25 @@ func NewServiceClient(watcherAddress string) (Client, error) {
 	}, nil
 }
 
+func (c libraryClient) GetFetcher() (watcher.MetricsProviderClient) {
+	return c.fetcherClient
+}
+
+func (c serviceClient) GetFetcher() (watcher.MetricsProviderClient) {
+	panic("Service client can not return the fetcher!")
+}
+
+
 func (c libraryClient) GetLatestWatcherMetrics() (*watcher.WatcherMetrics, error) {
-	return c.watcher.GetLatestWatcherMetrics(watcher.FifteenMinutes)
+	curWindow := watcher.CurrentFifteenMinuteWindow()
+	hostMetrics, err := c.fetcherClient.FetchAllHostsMetrics(curWindow)
+
+	if err != nil {
+		return nil, err
+	}
+
+	watcherMetrics := watcher.MetricMapToWatcherMetrics(hostMetrics, c.fetcherClient.Name(), *curWindow)
+	return &watcherMetrics, nil
 }
 
 func (c serviceClient) GetLatestWatcherMetrics() (*watcher.WatcherMetrics, error) {

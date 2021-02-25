@@ -22,4 +22,5 @@ import "github.com/paypal/load-watcher/pkg/watcher"
 type Client interface {
 	// Returns latest metrics present in load Watcher cache
 	GetLatestWatcherMetrics() (*watcher.WatcherMetrics, error)
+	GetFetcher() (watcher.MetricsProviderClient)
 }
