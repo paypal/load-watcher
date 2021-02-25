@@ -22,7 +22,6 @@ import (
 	"net/url"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/francoispqt/gojay"
 	"github.com/stretchr/testify/assert"
@@ -125,7 +124,6 @@ func TestMain(m *testing.M) {
 	client := NewTestMetricsServerClient()
 	w = NewWatcher(client)
 	w.StartWatching()
-	time.Sleep(time.Second * 5) // buffer time fetch metrics for all windows
 
 	ret := m.Run()
 	os.Exit(ret)
