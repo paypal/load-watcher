@@ -140,12 +140,15 @@ func (w *Watcher) StartWatching() {
 	windowWatcher := func(duration string) {
 		for {
 			fetchOnce(duration)
-			time.Sleep(time.Minute) // This is assuming fetching of metrics won't exceed more than 1 minute. If it happens we need to throttle rate of fetches
+			// This is assuming fetching of metrics won't exceed more than 1 minute. If it happens we need to throttle rate of fetches
+			time.Sleep(time.Minute)
 		}
 	}
 
 	durations := [3]string{FifteenMinutes, TenMinutes, FiveMinutes}
 	for _, duration := range durations {
+		// Populate cache initially before returning
+		fetchOnce(duration)
 		go windowWatcher(duration)
 	}
 
