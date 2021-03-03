@@ -401,7 +401,7 @@ func getMetricsFromPayloads(metricData interface{}, metadata interface{}) (map[s
 		}
 		// Find the average across returned values per 1 minute resolution
 		var sum float64
-		var cnt float64
+		var count float64
 		for _, value := range values {
 			var timestampUtilisation []interface{}
 			timestampUtilisation, ok = value.([]interface{})
@@ -413,10 +413,10 @@ func getMetricsFromPayloads(metricData interface{}, metadata interface{}) (map[s
 				log.Errorf("unable to typecast value to float64: %v of type %T", timestampUtilisation, timestampUtilisation)
 			}
 			sum += timestampUtilisation[1].(float64)
-			cnt += 1
+			count += 1
 		}
 
-		fetchedMetric := watcher.Metric{Value: sum / cnt}
+		fetchedMetric := watcher.Metric{Value: sum / count}
 		hostMetricMap[keyHostMap[key]] = fetchedMetric
 	}
 
