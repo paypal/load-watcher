@@ -44,6 +44,7 @@ const (
 	cpuUtilizationMetric    = `sf_metric:"cpu.utilization"`
 	memoryUtilizationMetric = `sf_metric:"memory.utilization"`
 	AND                     = "AND"
+	resultSetLimit          = "10000"
 
 	// Miscellaneous
 	httpClientTimeout = 55 * time.Second
@@ -138,16 +139,16 @@ func (s signalFxClient) FetchAllHostsMetrics(window *watcher.Window) (map[string
 		req.Header.Set("X-SF-Token", s.authToken)
 		req.Header.Set("Content-Type", "application/json")
 
-		resp, err := s.client.Do(req)
+		metricResp, err := s.client.Do(req)
 		if err != nil {
 			return metrics, err
 		}
-		defer resp.Body.Close()
-		if resp.StatusCode != http.StatusOK {
-			return metrics, fmt.Errorf("received status code: %v", resp.StatusCode)
+		defer metricResp.Body.Close()
+		if metricResp.StatusCode != http.StatusOK {
+			return metrics, fmt.Errorf("received status code: %v", metricResp.StatusCode)
 		}
 		var metricPayload interface{}
-		err = json.NewDecoder(resp.Body).Decode(&metricPayload)
+		err = json.NewDecoder(metricResp.Body).Decode(&metricPayload)
 		if err != nil {
 			return metrics, err
 		}
@@ -160,16 +161,16 @@ func (s signalFxClient) FetchAllHostsMetrics(window *watcher.Window) (map[string
 		req.Header.Set("X-SF-Token", s.authToken)
 		req.Header.Set("Content-Type", "application/json")
 
-		resp, err = s.client.Do(req)
+		metadataResp, err := s.client.Do(req)
 		if err != nil {
 			return metrics, err
 		}
-		defer resp.Body.Close()
-		if resp.StatusCode != http.StatusOK {
-			return metrics, fmt.Errorf("received status code: %v", resp.StatusCode)
+		defer metadataResp.Body.Close()
+		if metadataResp.StatusCode != http.StatusOK {
+			return metrics, fmt.Errorf("received status code: %v", metadataResp.StatusCode)
 		}
 		var metadataPayload interface{}
-		err = json.NewDecoder(resp.Body).Decode(&metadataPayload)
+		err = json.NewDecoder(metadataResp.Body).Decode(&metadataPayload)
 		if err != nil {
 			return metrics, err
 		}
@@ -227,6 +228,7 @@ func (s signalFxClient) buildMetadataURL(host string, metric string) (uri *url.U
 	builder.WriteString(fmt.Sprintf(" %v ", AND))
 	builder.WriteString(metric)
 	q.Set("query", builder.String())
+	q.Set("limit", resultSetLimit)
 	uri.RawQuery = q.Encode()
 	return
 }
@@ -313,7 +315,7 @@ Sample metaData payload:
             "created": 1614534848000,
             "creator": null,
             "dimensions": {
-                "host": "test",
+                "host": "test.dev.com",
                 "sf_metric": null
             },
         "id": "EvVH6P7BgAA",
@@ -329,24 +331,49 @@ Sample metaData payload:
 func getMetricsFromPayloads(metricData interface{}, metadata interface{}) (map[string]watcher.Metric, error) {
 	keyHostMap := make(map[string]string)
 	hostMetricMap := make(map[string]watcher.Metric)
+	if _, ok := metadata.(map[string]interface{}); !ok {
+		return hostMetricMap, fmt.Errorf("type conversion failed, found %T", metadata)
+	}
 	results := metadata.(map[string]interface{})["results"]
 	if results == nil {
 		return hostMetricMap, errors.New("unexpected payload: missing results field")
 	}
 
 	for _, v := range results.([]interface{}) {
-		id := v.(map[string]interface{})["id"].(string)
+		_, ok := v.(map[string]interface{})
+		if !ok {
+			log.Errorf("type conversion failed, found %T", v)
+			continue
+		}
+		id := v.(map[string]interface{})["id"]
+		if id == nil {
+			log.Errorf("id not found in %v", v)
+			continue
+		}
+		_, ok = id.(string)
+		if !ok {
+			log.Errorf("id not expected type string, found %T", id)
+			continue
+		}
 		dimensions := v.(map[string]interface{})["dimensions"]
 		if dimensions == nil {
 			log.Errorf("no dimensions found in %v", v)
 			continue
 		}
-		host := dimensions.(map[string]interface{})["host"]
-		if host == nil {
-			log.Errorf("no host found in %v", v)
+		_, ok = dimensions.(map[string]interface{})
+		if !ok {
+			log.Errorf("type conversion failed, found %T", dimensions)
 			continue
 		}
-		keyHostMap[id] = host.(string)
+		host := dimensions.(map[string]interface{})["host"]
+		if host == nil {
+			log.Errorf("no host found in %v", dimensions)
+			continue
+		}
+		if _, ok := host.(string); !ok {
+			log.Errorf("host not expected type string, found %T", host)
+		}
+		keyHostMap[id.(string)] = host.(string)
 	}
 
 	var data interface{}
@@ -372,15 +399,24 @@ func getMetricsFromPayloads(metricData interface{}, metadata interface{}) (map[s
 			log.Errorf("no metric value array could be decoded for key %v", key)
 			continue
 		}
-
-		var timestampUtilisation []interface{}
-		// Choose the latest window out of multiple values returned
-		timestampUtilisation, ok = values[len(values)-1].([]interface{})
-		if !ok {
-			log.Errorf("unable to deserialise metric values for key %v", key)
-			continue
+		// Find the average across returned values per 1 minute resolution
+		var sum float64
+		var cnt float64
+		for _, value := range values {
+			var timestampUtilisation []interface{}
+			timestampUtilisation, ok = value.([]interface{})
+			if !ok || len(timestampUtilisation) < 2 {
+				log.Errorf("unable to deserialise metric values for key %v", key)
+				continue
+			}
+			if _, ok := timestampUtilisation[1].(float64); !ok {
+				log.Errorf("unable to typecast value to float64: %v of type %T", timestampUtilisation, timestampUtilisation)
+			}
+			sum += timestampUtilisation[1].(float64)
+			cnt += 1
 		}
-		fetchedMetric := watcher.Metric{Value: timestampUtilisation[1].(float64)}
+
+		fetchedMetric := watcher.Metric{Value: sum / cnt}
 		hostMetricMap[keyHostMap[key]] = fetchedMetric
 	}
 
