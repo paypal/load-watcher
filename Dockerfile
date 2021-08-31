@@ -7,5 +7,4 @@ FROM alpine:3.12
 
 COPY --from=0 /go/src/github.com/paypal/load-watcher/bin/load-watcher /bin/load-watcher
 
-RUN ["chmod", "+x", "/bin/load-watcher"]
 CMD ["/bin/load-watcher"]
