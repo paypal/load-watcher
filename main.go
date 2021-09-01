@@ -31,7 +31,7 @@ func main() {
 	if err != nil {
 		log.Errorf("unable to get watcher metrics: %v", err)
 	}
-	log.Infof("received metrics: %v", metrics)
+	log.Debugf("received metrics: %v", metrics)
 
 	// Keep the watcher server up
 	select {}

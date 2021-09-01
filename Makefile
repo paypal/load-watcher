@@ -17,6 +17,7 @@ BUILDENVVAR=CGO_ENABLED=0
 
 .PHONY: all
 all: build
+	chmod +x bin/load-watcher
 
 .PHONY: build
 build:

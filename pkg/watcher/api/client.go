@@ -17,6 +17,7 @@ limitations under the License.
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -104,7 +105,9 @@ func (c serviceClient) GetLatestWatcherMetrics() (*watcher.WatcherMetrics, error
 			return &metrics, nil
 		}
 	} else {
-		klog.Errorf("received status code %v from watcher", resp.StatusCode)
+		err = fmt.Errorf("received status code %v from watcher", resp.StatusCode)
+		klog.Error(err)
+		return nil, err
 	}
 	return nil, nil
 }
