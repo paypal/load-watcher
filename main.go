@@ -20,7 +20,16 @@ import (
 	"github.com/paypal/load-watcher/pkg/watcher"
 	"github.com/paypal/load-watcher/pkg/watcher/api"
 	log "github.com/sirupsen/logrus"
+	"os"
 )
+
+func init() {
+	logLevel, _ := os.LookupEnv("LOG_LEVEL")
+	parsedLogLevel, err := log.ParseLevel(logLevel)
+	if err != nil {
+		log.SetLevel(parsedLogLevel)
+	}
+}
 
 func main() {
 	client, err := api.NewLibraryClient(watcher.EnvMetricProviderOpts)
