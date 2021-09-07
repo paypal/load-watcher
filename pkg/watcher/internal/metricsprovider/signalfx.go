@@ -381,7 +381,7 @@ func getMetricsFromPayloads(metricData interface{}, metadata interface{}) (map[s
 			log.Errorf("host not expected type string, found %T", host)
 		}
 
-		keyHostMap[id.(string)] = cleanUpHostname(host.(string))
+		keyHostMap[id.(string)] = extractHostName(host.(string))
 	}
 
 	var data interface{}
@@ -431,12 +431,13 @@ func getMetricsFromPayloads(metricData interface{}, metadata interface{}) (map[s
 	return hostMetricMap, nil
 }
 
-// This function extracts host name from its FQDN
-// This assumes that host names themselves don't contain "."
-func cleanUpHostname(hostname string) string {
-	index := strings.Index(hostname, ".")
+// This function checks and extracts node name from its FQDN if present
+// It assumes that node names themselves don't contain "."
+// Example: alpha.dev.k8s.com is returned as alpha
+func extractHostName(fqdn string) string {
+	index := strings.Index(fqdn, ".")
 	if index != -1 {
-		return hostname[:index]
+		return fqdn[:index]
 	}
-	return hostname
+	return fqdn
 }

@@ -24,9 +24,12 @@ import (
 )
 
 func init() {
-	logLevel, _ := os.LookupEnv("LOG_LEVEL")
+	logLevel, evnLogLevelSet := os.LookupEnv("LOG_LEVEL")
 	parsedLogLevel, err := log.ParseLevel(logLevel)
-	if err != nil {
+	if evnLogLevelSet && err != nil {
+		log.Info("unable to parse log level set; defaulting to: %v", log.GetLevel())
+	}
+	if err == nil {
 		log.SetLevel(parsedLogLevel)
 	}
 }
