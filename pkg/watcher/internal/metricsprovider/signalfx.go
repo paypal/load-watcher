@@ -38,7 +38,9 @@ const (
 	signalFxMetricsAPI        = "/v1/timeserieswindow"
 	signalFxMetdataAPI        = "/v2/metrictimeseries"
 	signalFxHostFilter        = "host:"
+	signalFxClusterFilter     = "cluster:"
 	signalFxHostNameSuffixKey = "SIGNALFX_HOST_NAME_SUFFIX"
+	signalFxClusterName       = "SIGNALFX_CLUSTER_NAME"
 	// SignalFX Query Params
 	oneMinuteResolutionMs   = 60000
 	cpuUtilizationMetric    = `sf_metric:"cpu.utilization"`
@@ -55,6 +57,7 @@ type signalFxClient struct {
 	authToken       string
 	signalFxAddress string
 	hostNameSuffix  string
+	clusterName     string
 }
 
 func NewSignalFxClient(opts watcher.MetricsProviderOpts) (watcher.MetricsProviderClient, error) {
@@ -65,6 +68,7 @@ func NewSignalFxClient(opts watcher.MetricsProviderOpts) (watcher.MetricsProvide
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // TODO(aqadeer): Figure out a secure way to let users add SSL certs
 	}
 	hostNameSuffix, _ := os.LookupEnv(signalFxHostNameSuffixKey)
+	clusterName, _ := os.LookupEnv(signalFxClusterName)
 	var signalFxAddress, signalFxAuthToken = DefaultSignalFxAddress, ""
 	if opts.Address != "" {
 		signalFxAddress = opts.Address
@@ -80,7 +84,8 @@ func NewSignalFxClient(opts watcher.MetricsProviderOpts) (watcher.MetricsProvide
 		Transport: tlsConfig},
 		authToken:       signalFxAuthToken,
 		signalFxAddress: signalFxAddress,
-		hostNameSuffix:  hostNameSuffix}, nil
+		hostNameSuffix:  hostNameSuffix,
+		clusterName:     clusterName}, nil
 }
 
 func (s signalFxClient) Name() string {
@@ -90,10 +95,10 @@ func (s signalFxClient) Name() string {
 func (s signalFxClient) FetchHostMetrics(host string, window *watcher.Window) ([]watcher.Metric, error) {
 	log.Debugf("fetching metrics for host %v", host)
 	var metrics []watcher.Metric
-	hostQuery := signalFxHostFilter + host + s.hostNameSuffix
-
+	hostFilter := signalFxHostFilter + host + s.hostNameSuffix
+	clusterFilter := signalFxClusterFilter + s.clusterName
 	for _, metric := range []string{cpuUtilizationMetric, memoryUtilizationMetric} {
-		uri, err := s.buildMetricURL(hostQuery, metric, window)
+		uri, err := s.buildMetricURL(hostFilter, clusterFilter, metric, window)
 		if err != nil {
 			return metrics, err
 		}
@@ -123,15 +128,15 @@ func (s signalFxClient) FetchHostMetrics(host string, window *watcher.Window) ([
 		}
 		metrics = append(metrics, fetchedMetric)
 	}
-
 	return metrics, nil
 }
 
 func (s signalFxClient) FetchAllHostsMetrics(window *watcher.Window) (map[string][]watcher.Metric, error) {
-	hostQuery := signalFxHostFilter + "*" + s.hostNameSuffix
+	hostFilter := signalFxHostFilter + "*" + s.hostNameSuffix
+	clusterFilter := signalFxClusterFilter + s.clusterName
 	metrics := make(map[string][]watcher.Metric)
 	for _, metric := range []string{cpuUtilizationMetric, memoryUtilizationMetric} {
-		uri, err := s.buildMetricURL(hostQuery, metric, window)
+		uri, err := s.buildMetricURL(hostFilter, clusterFilter, metric, window)
 		if err != nil {
 			return metrics, err
 		}
@@ -153,7 +158,7 @@ func (s signalFxClient) FetchAllHostsMetrics(window *watcher.Window) (map[string
 			return metrics, err
 		}
 
-		uri, err = s.buildMetadataURL(hostQuery, metric)
+		uri, err = s.buildMetadataURL(hostFilter, metric)
 		if err != nil {
 			return metrics, err
 		}
@@ -197,7 +202,7 @@ func addMetadata(metric *watcher.Metric, metricType string) {
 	}
 }
 
-func (s signalFxClient) buildMetricURL(host string, metric string, window *watcher.Window) (uri *url.URL, err error) {
+func (s signalFxClient) buildMetricURL(hostFilter string, clusterFilter string, metric string, window *watcher.Window) (uri *url.URL, err error) {
 	uri, err = url.Parse(s.signalFxAddress + signalFxMetricsAPI)
 	if err != nil {
 		return nil, err
@@ -205,7 +210,9 @@ func (s signalFxClient) buildMetricURL(host string, metric string, window *watch
 	q := uri.Query()
 
 	builder := strings.Builder{}
-	builder.WriteString(host)
+	builder.WriteString(hostFilter)
+	builder.WriteString(fmt.Sprintf(" %v ", AND))
+	builder.WriteString(clusterFilter)
 	builder.WriteString(fmt.Sprintf(" %v ", AND))
 	builder.WriteString(metric)
 	q.Set("query", builder.String())
@@ -373,7 +380,8 @@ func getMetricsFromPayloads(metricData interface{}, metadata interface{}) (map[s
 		if _, ok := host.(string); !ok {
 			log.Errorf("host not expected type string, found %T", host)
 		}
-		keyHostMap[id.(string)] = host.(string)
+
+		keyHostMap[id.(string)] = extractHostName(host.(string))
 	}
 
 	var data interface{}
@@ -421,4 +429,15 @@ func getMetricsFromPayloads(metricData interface{}, metadata interface{}) (map[s
 	}
 
 	return hostMetricMap, nil
+}
+
+// This function checks and extracts node name from its FQDN if present
+// It assumes that node names themselves don't contain "."
+// Example: alpha.dev.k8s.com is returned as alpha
+func extractHostName(fqdn string) string {
+	index := strings.Index(fqdn, ".")
+	if index != -1 {
+		return fqdn[:index]
+	}
+	return fqdn
 }

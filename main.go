@@ -20,7 +20,19 @@ import (
 	"github.com/paypal/load-watcher/pkg/watcher"
 	"github.com/paypal/load-watcher/pkg/watcher/api"
 	log "github.com/sirupsen/logrus"
+	"os"
 )
+
+func init() {
+	logLevel, evnLogLevelSet := os.LookupEnv("LOG_LEVEL")
+	parsedLogLevel, err := log.ParseLevel(logLevel)
+	if evnLogLevelSet && err != nil {
+		log.Infof("unable to parse log level set; defaulting to: %v", log.GetLevel())
+	}
+	if err == nil {
+		log.SetLevel(parsedLogLevel)
+	}
+}
 
 func main() {
 	client, err := api.NewLibraryClient(watcher.EnvMetricProviderOpts)
