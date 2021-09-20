@@ -1,0 +1,10 @@
+{
+    "dataSource": "milestones",
+    "groupBy": {
+        "Features:": ["enhancement", "documentation"],
+        "Bug Fixes:": ["bug"]
+    },
+    "ignoreLabels": ["help wanted", "question", "good first issue"],
+    "milestoneMatch": "{{tag_name}}",
+    "changelogFilename": "CHANGELOG.md"
+}
