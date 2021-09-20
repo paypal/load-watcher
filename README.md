@@ -1,4 +1,4 @@
-# Load Watcher [![Go Reference](https://pkg.go.dev/badge/github.com/paypal/load-watcher.svg)](https://pkg.go.dev/github.com/paypal/load-watcher) ![CI Build Status](https://github.com/paypal/load-watcher/actions/workflows/ci.yml/badge.svg)
+# Load Watcher [![Go Reference](https://pkg.go.dev/badge/github.com/paypal/load-watcher.svg)](https://pkg.go.dev/github.com/paypal/load-watcher) ![CI Build Status](https://github.com/paypal/load-watcher/actions/workflows/ci.yml/badge.svg) [![Automated Release Notes by gren](https://img.shields.io/badge/%F0%9F%A4%96-release%20notes-00B2EE.svg)](https://github-tools.github.io/github-release-notes/)
 
 The load watcher is responsible for the cluster-wide aggregation of resource usage metrics like CPU, memory, network, and IO stats over time windows from a metrics provider like SignalFx, Prometheus, Kubernetes Metrics Server etc. developed for [Trimaran: Real Load Aware Scheduling](https://github.com/kubernetes-sigs/scheduler-plugins/blob/master/kep/61-Trimaran-real-load-aware-scheduling/README.md) in Kubernetes.
 It stores the metrics in its local cache, which can be queried from scheduler plugins.
