@@ -63,7 +63,7 @@ func NewPromClient(opts watcher.MetricsProviderOpts) (watcher.MetricsProviderCli
 	if promToken != "" {
 		client, err = api.NewClient(api.Config{
 			Address:      promAddress,
-			RoundTripper: config.NewBearerAuthRoundTripper(config.Secret(opts.AuthToken), api.DefaultRoundTripper),
+			RoundTripper: config.NewAuthorizationCredentialsRoundTripper("Bearer", config.Secret(opts.AuthToken), api.DefaultRoundTripper),
 		})
 	} else {
 		client, err = api.NewClient(api.Config{
