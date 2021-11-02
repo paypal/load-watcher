@@ -302,8 +302,7 @@ func (w *Watcher) handler(resp http.ResponseWriter, r *http.Request) {
 
 // Simple server status handler
 func (w *Watcher) healthCheckHandler(resp http.ResponseWriter, r *http.Request) {
-	status, err := w.client.Health()
-	if status != 0 {
+	if status, err := w.client.Health(); status != 0 {
 		log.Warnf("health check failed with: %v", err)
 		resp.WriteHeader(http.StatusServiceUnavailable)
 		return

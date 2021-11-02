@@ -143,7 +143,6 @@ func (s promClient) Health() (int, error) {
 	if err != nil {
 		return -1, err
 	}
-	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return -1, fmt.Errorf("received response status code: %v", resp.StatusCode)
 	}

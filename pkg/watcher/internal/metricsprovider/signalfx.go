@@ -209,7 +209,6 @@ func Ping(client http.Client, url string) (int, error) {
 	if resp.StatusCode != http.StatusOK {
 		return -1, fmt.Errorf("received response code: %v", resp.StatusCode)
 	}
-	resp.Body.Close()
 	return 0, nil
 }
 
