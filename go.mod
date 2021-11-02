@@ -1,6 +1,6 @@
 module github.com/paypal/load-watcher
 
-go 1.15
+go 1.16
 
 require (
 	github.com/francoispqt/gojay v1.2.13
