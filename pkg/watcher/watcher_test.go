@@ -120,6 +120,17 @@ func TestWatcherInternalServerError(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, rr.Code)
 }
 
+func TestWatcherHealthCheck(t *testing.T) {
+	req, err := http.NewRequest("GET", HealthCheckUrl, nil)
+	require.Nil(t, err)
+
+	rr := httptest.NewRecorder()
+	handler := http.HandlerFunc(w.handler)
+
+	handler.ServeHTTP(rr, req)
+	require.Equal(t, http.StatusOK, rr.Code)
+}
+
 func TestMain(m *testing.M) {
 	client := NewTestMetricsServerClient()
 	w = NewWatcher(client)
