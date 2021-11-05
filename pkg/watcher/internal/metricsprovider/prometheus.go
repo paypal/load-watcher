@@ -18,7 +18,9 @@ package metricsprovider
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
+	"net"
 	"net/http"
 	"time"
 
@@ -61,10 +63,20 @@ func NewPromClient(opts watcher.MetricsProviderOpts) (watcher.MetricsProviderCli
 		promAddress = opts.Address
 	}
 
+	skipVerifyRoundTripper := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		TLSHandshakeTimeout: 10 * time.Second,
+		TLSClientConfig: &tls.Config{InsecureSkipVerify : true},
+	}
+
 	if promToken != "" {
 		client, err = api.NewClient(api.Config{
 			Address:      promAddress,
-			RoundTripper: config.NewAuthorizationCredentialsRoundTripper("Bearer", config.Secret(opts.AuthToken), api.DefaultRoundTripper),
+			RoundTripper: config.NewAuthorizationCredentialsRoundTripper("Bearer", config.Secret(opts.AuthToken), skipVerifyRoundTripper),
 		})
 	} else {
 		client, err = api.NewClient(api.Config{
