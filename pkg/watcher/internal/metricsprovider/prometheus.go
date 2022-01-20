@@ -63,20 +63,24 @@ func NewPromClient(opts watcher.MetricsProviderOpts) (watcher.MetricsProviderCli
 		promAddress = opts.Address
 	}
 
-	skipVerifyRoundTripper := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		DialContext: (&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-		}).DialContext,
-		TLSHandshakeTimeout: 10 * time.Second,
-		TLSClientConfig: &tls.Config{InsecureSkipVerify : true},
+	// Ignore TLS verify errors if InsecureSkipVerify is set
+	roundTripper := api.DefaultRoundTripper
+	if opts.InsecureSkipVerify {
+		roundTripper = &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			DialContext: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).DialContext,
+			TLSHandshakeTimeout: 10 * time.Second,
+			TLSClientConfig: &tls.Config{InsecureSkipVerify : true},
+		}
 	}
 
 	if promToken != "" {
 		client, err = api.NewClient(api.Config{
 			Address:      promAddress,
-			RoundTripper: config.NewAuthorizationCredentialsRoundTripper("Bearer", config.Secret(opts.AuthToken), skipVerifyRoundTripper),
+			RoundTripper: config.NewAuthorizationCredentialsRoundTripper("Bearer", config.Secret(opts.AuthToken), roundTripper),
 		})
 	} else {
 		client, err = api.NewClient(api.Config{

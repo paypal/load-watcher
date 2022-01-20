@@ -26,6 +26,7 @@ const (
 	MetricsProviderNameKey    = "METRICS_PROVIDER_NAME"
 	MetricsProviderAddressKey = "METRICS_PROVIDER_ADDRESS"
 	MetricsProviderTokenKey   = "METRICS_PROVIDER_TOKEN"
+	SkipInsecureVerify	= "SkipInsecureVerify"
 )
 
 var (
@@ -40,6 +41,7 @@ func init() {
 	}
 	EnvMetricProviderOpts.Address, ok = os.LookupEnv(MetricsProviderAddressKey)
 	EnvMetricProviderOpts.AuthToken, ok = os.LookupEnv(MetricsProviderTokenKey)
+	_, EnvMetricProviderOpts.InsecureSkipVerify = os.LookupEnv(SkipInsecureVerify)
 }
 
 // Interface to be implemented by any metrics provider client to interact with Watcher
@@ -60,4 +62,5 @@ type MetricsProviderOpts struct {
 	Name      string
 	Address   string
 	AuthToken string
+	InsecureSkipVerify	bool
 }
