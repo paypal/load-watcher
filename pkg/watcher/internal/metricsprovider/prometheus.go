@@ -19,9 +19,17 @@ package metricsprovider
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/transport"
 	"net"
 	"net/http"
+	"net/url"
+	"os"
 	"time"
 
 	"github.com/paypal/load-watcher/pkg/watcher"
@@ -42,6 +50,7 @@ const (
 	promMemMetric      = "instance:node_memory_utilisation:ratio"
 	allHosts           = "all"
 	hostMetricKey      = "instance"
+	defaultKubeConfig  = "~/.kube/config"
 )
 
 type promClient struct {
@@ -65,7 +74,53 @@ func NewPromClient(opts watcher.MetricsProviderOpts) (watcher.MetricsProviderCli
 
 	// Ignore TLS verify errors if InsecureSkipVerify is set
 	roundTripper := api.DefaultRoundTripper
-	if opts.InsecureSkipVerify {
+	if opts.EnableOpenShiftAuth{
+		// Create the config for kubernetes client
+		config, err := rest.InClusterConfig()
+		if err != nil {
+			// Get the kubeconfig path
+			kubeConfigPath, ok :=  os.LookupEnv(kubeConfig)
+			if !ok {
+				kubeConfigPath = defaultKubeConfig
+			}
+			config, err = clientcmd.BuildConfigFromFlags("", kubeConfigPath)
+        }
+
+		// Create the client for kubernetes
+		kclient, err:= kubernetes.NewForConfig(config)
+		if err != nil {
+            return nil, fmt.Errorf("failed to create kubernetes client: %v", err)
+        }
+
+		// Retrieve router CA cert
+		routerCAConfigMap, err := kclient.CoreV1().ConfigMaps("openshift-config-managed").Get(context.TODO(), "default-ingress-cert", metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		bundlePEM := []byte(routerCAConfigMap.Data["ca-bundle.crt"])
+
+		// make a client connection configured with the provided bundle.
+		roots := x509.NewCertPool()
+		roots.AppendCertsFromPEM(bundlePEM)
+
+		// Get Prometheus Host
+		u, _ := url.Parse(opts.Address)
+		roundTripper = transport.NewBearerAuthRoundTripper(
+			opts.AuthToken,
+			&http.Transport{
+				Proxy: http.ProxyFromEnvironment,
+				DialContext: (&net.Dialer{
+					Timeout:   30 * time.Second,
+					KeepAlive: 30 * time.Second,
+				}).DialContext,
+				TLSHandshakeTimeout: 10 * time.Second,
+				TLSClientConfig: &tls.Config{
+					RootCAs:    roots,
+					ServerName: u.Host,
+				},
+			},
+		)
+	} else if opts.InsecureSkipVerify {
 		roundTripper = &http.Transport{
 			Proxy: http.ProxyFromEnvironment,
 			DialContext: (&net.Dialer{
