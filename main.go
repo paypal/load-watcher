@@ -24,6 +24,7 @@ import (
 )
 
 func init() {
+	log.SetReportCaller(true)
 	logLevel, evnLogLevelSet := os.LookupEnv("LOG_LEVEL")
 	parsedLogLevel, err := log.ParseLevel(logLevel)
 	if evnLogLevelSet && err != nil {
