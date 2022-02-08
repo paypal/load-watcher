@@ -100,7 +100,7 @@ func (s signalFxClient) FetchHostMetrics(host string, window *watcher.Window) ([
 	for _, metric := range []string{cpuUtilizationMetric, memoryUtilizationMetric} {
 		uri, err := s.buildMetricURL(hostFilter, clusterFilter, metric, window)
 		if err != nil {
-			return metrics, err
+			return metrics, fmt.Errorf("received error when building metric URL: %v", err)
 		}
 		req, _ := http.NewRequest(http.MethodGet, uri.String(), nil)
 		req.Header.Set("X-SF-Token", s.authToken)
@@ -108,7 +108,7 @@ func (s signalFxClient) FetchHostMetrics(host string, window *watcher.Window) ([
 
 		resp, err := s.client.Do(req)
 		if err != nil {
-			return metrics, err
+			return metrics, fmt.Errorf("received error in metric API call: %v", err)
 		}
 		defer resp.Body.Close()
 		if resp.StatusCode != http.StatusOK {
@@ -117,7 +117,7 @@ func (s signalFxClient) FetchHostMetrics(host string, window *watcher.Window) ([
 		var res interface{}
 		err = json.NewDecoder(resp.Body).Decode(&res)
 		if err != nil {
-			return metrics, err
+			return metrics, fmt.Errorf("received error in decoding resp: %v", err)
 		}
 
 		var fetchedMetric watcher.Metric
@@ -138,50 +138,44 @@ func (s signalFxClient) FetchAllHostsMetrics(window *watcher.Window) (map[string
 	for _, metric := range []string{cpuUtilizationMetric, memoryUtilizationMetric} {
 		uri, err := s.buildMetricURL(hostFilter, clusterFilter, metric, window)
 		if err != nil {
-			return metrics, err
+			return metrics, fmt.Errorf("received error when building metric URL: %v", err)
 		}
-		req, _ := http.NewRequest(http.MethodGet, uri.String(), nil)
-		req.Header.Set("X-SF-Token", s.authToken)
-		req.Header.Set("Content-Type", "application/json")
-
+		req := s.requestWithAuthToken(uri.String())
 		metricResp, err := s.client.Do(req)
 		if err != nil {
-			return metrics, err
+			return metrics, fmt.Errorf("received error in metric API call: %v", err)
 		}
 		defer metricResp.Body.Close()
 		if metricResp.StatusCode != http.StatusOK {
-			return metrics, fmt.Errorf("received status code: %v", metricResp.StatusCode)
+			return metrics, fmt.Errorf("received status code for metric resp: %v", metricResp.StatusCode)
 		}
 		var metricPayload interface{}
 		err = json.NewDecoder(metricResp.Body).Decode(&metricPayload)
 		if err != nil {
-			return metrics, err
+			return metrics, fmt.Errorf("received error in decoding resp: %v", err)
 		}
 
-		uri, err = s.buildMetadataURL(hostFilter, metric)
+		uri, err = s.buildMetadataURL(hostFilter, clusterFilter, metric)
 		if err != nil {
-			return metrics, err
+			return metrics, fmt.Errorf("received error when building metadata URL: %v", err)
 		}
-		req, _ = http.NewRequest(http.MethodGet, uri.String(), nil)
-		req.Header.Set("X-SF-Token", s.authToken)
-		req.Header.Set("Content-Type", "application/json")
-
+		req = s.requestWithAuthToken(uri.String())
 		metadataResp, err := s.client.Do(req)
 		if err != nil {
-			return metrics, err
+			return metrics, fmt.Errorf("received error in metadata API call: %v", err)
 		}
 		defer metadataResp.Body.Close()
 		if metadataResp.StatusCode != http.StatusOK {
-			return metrics, fmt.Errorf("received status code: %v", metadataResp.StatusCode)
+			return metrics, fmt.Errorf("received status code for metadata resp: %v", metadataResp.StatusCode)
 		}
 		var metadataPayload interface{}
 		err = json.NewDecoder(metadataResp.Body).Decode(&metadataPayload)
 		if err != nil {
-			return metrics, err
+			return metrics, fmt.Errorf("received error in decoding metadata payload: %v", err)
 		}
 		mappedMetrics, err := getMetricsFromPayloads(metricPayload, metadataPayload)
 		if err != nil {
-			return metrics, err
+			return metrics, fmt.Errorf("received error in getting metrics from payload: %v", err)
 		}
 		for k, v := range mappedMetrics {
 			addMetadata(&v, metric)
@@ -193,6 +187,13 @@ func (s signalFxClient) FetchAllHostsMetrics(window *watcher.Window) (map[string
 
 func (s signalFxClient) Health() (int, error) {
 	return Ping(s.client, s.signalFxAddress)
+}
+
+func (s signalFxClient) requestWithAuthToken(uri string) *http.Request {
+	req, _ := http.NewRequest(http.MethodGet, uri, nil)
+	req.Header.Set("X-SF-Token", s.authToken)
+	req.Header.Set("Content-Type", "application/json")
+	return req
 }
 
 // Simple ping utility to a given URL
@@ -244,7 +245,7 @@ func (s signalFxClient) buildMetricURL(hostFilter string, clusterFilter string, 
 	return
 }
 
-func (s signalFxClient) buildMetadataURL(host string, metric string) (uri *url.URL, err error) {
+func (s signalFxClient) buildMetadataURL(host string, clusterFilter string, metric string) (uri *url.URL, err error) {
 	uri, err = url.Parse(s.signalFxAddress + signalFxMetdataAPI)
 	if err != nil {
 		return nil, err
@@ -253,6 +254,8 @@ func (s signalFxClient) buildMetadataURL(host string, metric string) (uri *url.U
 
 	builder := strings.Builder{}
 	builder.WriteString(host)
+	builder.WriteString(fmt.Sprintf(" %v ", AND))
+	builder.WriteString(clusterFilter)
 	builder.WriteString(fmt.Sprintf(" %v ", AND))
 	builder.WriteString(metric)
 	q.Set("query", builder.String())
