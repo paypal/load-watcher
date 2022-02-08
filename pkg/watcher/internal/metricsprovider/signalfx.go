@@ -158,7 +158,7 @@ func (s signalFxClient) FetchAllHostsMetrics(window *watcher.Window) (map[string
 			return metrics, err
 		}
 
-		uri, err = s.buildMetadataURL(hostFilter, metric)
+		uri, err = s.buildMetadataURL(hostFilter, clusterFilter, metric)
 		if err != nil {
 			return metrics, err
 		}
@@ -244,7 +244,7 @@ func (s signalFxClient) buildMetricURL(hostFilter string, clusterFilter string, 
 	return
 }
 
-func (s signalFxClient) buildMetadataURL(host string, metric string) (uri *url.URL, err error) {
+func (s signalFxClient) buildMetadataURL(host string, clusterFilter string, metric string) (uri *url.URL, err error) {
 	uri, err = url.Parse(s.signalFxAddress + signalFxMetdataAPI)
 	if err != nil {
 		return nil, err
@@ -253,6 +253,8 @@ func (s signalFxClient) buildMetadataURL(host string, metric string) (uri *url.U
 
 	builder := strings.Builder{}
 	builder.WriteString(host)
+	builder.WriteString(fmt.Sprintf(" %v ", AND))
+	builder.WriteString(clusterFilter)
 	builder.WriteString(fmt.Sprintf(" %v ", AND))
 	builder.WriteString(metric)
 	q.Set("query", builder.String())
