@@ -18,8 +18,18 @@ package metricsprovider
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
+	"k8s.io/client-go/transport"
+	"net"
 	"net/http"
+	"net/url"
+	"os"
 	"time"
 
 	"github.com/paypal/load-watcher/pkg/watcher"
@@ -33,13 +43,15 @@ import (
 )
 
 const (
-	DefaultPromAddress = "http://prometheus-k8s:9090"
-	promStd            = "stddev_over_time"
-	promAvg            = "avg_over_time"
-	promCpuMetric      = "instance:node_cpu:ratio"
-	promMemMetric      = "instance:node_memory_utilisation:ratio"
-	allHosts           = "all"
-	hostMetricKey      = "instance"
+	EnableOpenShiftAuth = "ENABLE_OPENSHIFT_AUTH"
+	DefaultPromAddress  = "http://prometheus-k8s:9090"
+	promStd             = "stddev_over_time"
+	promAvg             = "avg_over_time"
+	promCpuMetric       = "instance:node_cpu:ratio"
+	promMemMetric       = "instance:node_memory_utilisation:ratio"
+	allHosts            = "all"
+	hostMetricKey       = "instance"
+	defaultKubeConfig   = "~/.kube/config"
 )
 
 type promClient struct {
@@ -61,10 +73,76 @@ func NewPromClient(opts watcher.MetricsProviderOpts) (watcher.MetricsProviderCli
 		promAddress = opts.Address
 	}
 
+	// Ignore TLS verify errors if InsecureSkipVerify is set
+	roundTripper := api.DefaultRoundTripper
+
+	// Check if EnableOpenShiftAuth is set.
+	_, enableOpenShiftAuth := os.LookupEnv(EnableOpenShiftAuth)
+	if enableOpenShiftAuth {
+		// Create the config for kubernetes client
+		clusterConfig, err := rest.InClusterConfig()
+		if err != nil {
+			// Get the kubeconfig path
+			kubeConfigPath, ok := os.LookupEnv(kubeConfig)
+			if !ok {
+				kubeConfigPath = defaultKubeConfig
+			}
+			clusterConfig, err = clientcmd.BuildConfigFromFlags("", kubeConfigPath)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get kubernetes config: %v", err)
+			}
+		}
+
+		// Create the client for kubernetes
+		kclient, err := kubernetes.NewForConfig(clusterConfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create kubernetes client: %v", err)
+		}
+
+		// Retrieve router CA cert
+		routerCAConfigMap, err := kclient.CoreV1().ConfigMaps("openshift-config-managed").Get(context.TODO(), "default-ingress-cert", metav1.GetOptions{})
+		if err != nil {
+			return nil, err
+		}
+		bundlePEM := []byte(routerCAConfigMap.Data["ca-bundle.crt"])
+
+		// make a client connection configured with the provided bundle.
+		roots := x509.NewCertPool()
+		roots.AppendCertsFromPEM(bundlePEM)
+
+		// Get Prometheus Host
+		u, _ := url.Parse(opts.Address)
+		roundTripper = transport.NewBearerAuthRoundTripper(
+			opts.AuthToken,
+			&http.Transport{
+				Proxy: http.ProxyFromEnvironment,
+				DialContext: (&net.Dialer{
+					Timeout:   30 * time.Second,
+					KeepAlive: 30 * time.Second,
+				}).DialContext,
+				TLSHandshakeTimeout: 10 * time.Second,
+				TLSClientConfig: &tls.Config{
+					RootCAs:    roots,
+					ServerName: u.Host,
+				},
+			},
+		)
+	} else if opts.InsecureSkipVerify {
+		roundTripper = &http.Transport{
+			Proxy: http.ProxyFromEnvironment,
+			DialContext: (&net.Dialer{
+				Timeout:   30 * time.Second,
+				KeepAlive: 30 * time.Second,
+			}).DialContext,
+			TLSHandshakeTimeout: 10 * time.Second,
+			TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
+		}
+	}
+
 	if promToken != "" {
 		client, err = api.NewClient(api.Config{
 			Address:      promAddress,
-			RoundTripper: config.NewAuthorizationCredentialsRoundTripper("Bearer", config.Secret(opts.AuthToken), api.DefaultRoundTripper),
+			RoundTripper: config.NewAuthorizationCredentialsRoundTripper("Bearer", config.Secret(opts.AuthToken), roundTripper),
 		})
 	} else {
 		client, err = api.NewClient(api.Config{
@@ -107,7 +185,7 @@ func (s promClient) FetchHostMetrics(host string, window *watcher.Window) ([]wat
 	return metricList, anyerr
 }
 
-// Fetch all host metrics with different operators (avg_over_time, stddev_over_time) and diffrent resource types (CPU, Memory)
+// FetchAllHostsMetrics Fetch all host metrics with different operators (avg_over_time, stddev_over_time) and different resource types (CPU, Memory)
 func (s promClient) FetchAllHostsMetrics(window *watcher.Window) (map[string][]watcher.Metric, error) {
 	hostMetrics := make(map[string][]watcher.Metric)
 	var anyerr error
@@ -179,15 +257,15 @@ func (s promClient) getPromResults(promQuery string) (model.Value, error) {
 }
 
 func (s promClient) promResults2MetricMap(promresults model.Value, metric string, method string, rollup string) map[string][]watcher.Metric {
-	var metric_type string
+	var metricType string
 	var operator string
 
 	curMetrics := make(map[string][]watcher.Metric)
 
 	if metric == promCpuMetric {
-		metric_type = watcher.CPU
+		metricType = watcher.CPU
 	} else {
-		metric_type = watcher.Memory
+		metricType = watcher.Memory
 	}
 
 	if method == promAvg {
@@ -201,7 +279,7 @@ func (s promClient) promResults2MetricMap(promresults model.Value, metric string
 	switch promresults.(type) {
 	case model.Vector:
 		for _, result := range promresults.(model.Vector) {
-			curMetric := watcher.Metric{metric, metric_type, operator, rollup, float64(result.Value * 100)}
+			curMetric := watcher.Metric{Name: metric, Type: metricType, Operator: operator, Rollup: rollup, Value: float64(result.Value * 100)}
 			curHost := string(result.Metric[hostMetricKey])
 			curMetrics[curHost] = append(curMetrics[curHost], curMetric)
 		}
