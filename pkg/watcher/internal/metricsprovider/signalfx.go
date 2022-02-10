@@ -65,7 +65,7 @@ func NewSignalFxClient(opts watcher.MetricsProviderOpts) (watcher.MetricsProvide
 		return nil, fmt.Errorf("metric provider name should be %v, found %v", watcher.SignalFxClientName, opts.Name)
 	}
 	tlsConfig := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // TODO(aqadeer): Figure out a secure way to let users add SSL certs
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: opts.InsecureSkipVerify}, // TODO(aqadeer): Figure out a secure way to let users add SSL certs
 	}
 	hostNameSuffix, _ := os.LookupEnv(signalFxHostNameSuffixKey)
 	clusterName, _ := os.LookupEnv(signalFxClusterName)
