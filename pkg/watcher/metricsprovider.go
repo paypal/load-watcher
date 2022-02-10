@@ -27,7 +27,6 @@ const (
 	MetricsProviderAddressKey = "METRICS_PROVIDER_ADDRESS"
 	MetricsProviderTokenKey   = "METRICS_PROVIDER_TOKEN"
 	InsecureSkipVerify	= "InsecureSkipVerify"
-	EnableOpenShiftAuth = "EnableOpenShiftAuth"
 )
 
 var (
@@ -43,7 +42,6 @@ func init() {
 	EnvMetricProviderOpts.Address, ok = os.LookupEnv(MetricsProviderAddressKey)
 	EnvMetricProviderOpts.AuthToken, ok = os.LookupEnv(MetricsProviderTokenKey)
 	_, EnvMetricProviderOpts.InsecureSkipVerify = os.LookupEnv(InsecureSkipVerify)
-	_, EnvMetricProviderOpts.EnableOpenShiftAuth = os.LookupEnv(EnableOpenShiftAuth)
 }
 
 // Interface to be implemented by any metrics provider client to interact with Watcher
@@ -65,5 +63,4 @@ type MetricsProviderOpts struct {
 	Address   string
 	AuthToken string
 	InsecureSkipVerify	bool
-	EnableOpenShiftAuth	bool
 }

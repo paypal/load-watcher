@@ -43,6 +43,7 @@ import (
 )
 
 const (
+	EnableOpenShiftAuth = "EnableOpenShiftAuth"
 	DefaultPromAddress = "http://prometheus-k8s:9090"
 	promStd            = "stddev_over_time"
 	promAvg            = "avg_over_time"
@@ -74,7 +75,10 @@ func NewPromClient(opts watcher.MetricsProviderOpts) (watcher.MetricsProviderCli
 
 	// Ignore TLS verify errors if InsecureSkipVerify is set
 	roundTripper := api.DefaultRoundTripper
-	if opts.EnableOpenShiftAuth{
+
+	// Check if EnableOpenShiftAuth is set.
+	_, enableOpenShiftAuth := os.LookupEnv(EnableOpenShiftAuth)
+	if enableOpenShiftAuth{
 		// Create the config for kubernetes client
 		config, err := rest.InClusterConfig()
 		if err != nil {
