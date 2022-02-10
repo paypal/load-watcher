@@ -26,7 +26,7 @@ const (
 	MetricsProviderNameKey    = "METRICS_PROVIDER_NAME"
 	MetricsProviderAddressKey = "METRICS_PROVIDER_ADDRESS"
 	MetricsProviderTokenKey   = "METRICS_PROVIDER_TOKEN"
-	InsecureSkipVerify	= "InsecureSkipVerify"
+	InsecureSkipVerify        = "InsecureSkipVerify"
 )
 
 var (
@@ -59,8 +59,8 @@ type MetricsProviderClient interface {
 
 // Generic metrics provider options
 type MetricsProviderOpts struct {
-	Name      string
-	Address   string
-	AuthToken string
-	InsecureSkipVerify	bool
+	Name               string
+	Address            string
+	AuthToken          string
+	InsecureSkipVerify bool
 }

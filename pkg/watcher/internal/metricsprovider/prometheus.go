@@ -44,14 +44,14 @@ import (
 
 const (
 	EnableOpenShiftAuth = "EnableOpenShiftAuth"
-	DefaultPromAddress = "http://prometheus-k8s:9090"
-	promStd            = "stddev_over_time"
-	promAvg            = "avg_over_time"
-	promCpuMetric      = "instance:node_cpu:ratio"
-	promMemMetric      = "instance:node_memory_utilisation:ratio"
-	allHosts           = "all"
-	hostMetricKey      = "instance"
-	defaultKubeConfig  = "~/.kube/config"
+	DefaultPromAddress  = "http://prometheus-k8s:9090"
+	promStd             = "stddev_over_time"
+	promAvg             = "avg_over_time"
+	promCpuMetric       = "instance:node_cpu:ratio"
+	promMemMetric       = "instance:node_memory_utilisation:ratio"
+	allHosts            = "all"
+	hostMetricKey       = "instance"
+	defaultKubeConfig   = "~/.kube/config"
 )
 
 type promClient struct {
@@ -78,23 +78,23 @@ func NewPromClient(opts watcher.MetricsProviderOpts) (watcher.MetricsProviderCli
 
 	// Check if EnableOpenShiftAuth is set.
 	_, enableOpenShiftAuth := os.LookupEnv(EnableOpenShiftAuth)
-	if enableOpenShiftAuth{
+	if enableOpenShiftAuth {
 		// Create the config for kubernetes client
-		config, err := rest.InClusterConfig()
+		clusterConfig, err := rest.InClusterConfig()
 		if err != nil {
 			// Get the kubeconfig path
-			kubeConfigPath, ok :=  os.LookupEnv(kubeConfig)
+			kubeConfigPath, ok := os.LookupEnv(kubeConfig)
 			if !ok {
 				kubeConfigPath = defaultKubeConfig
 			}
-			config, err = clientcmd.BuildConfigFromFlags("", kubeConfigPath)
-        }
+			clusterConfig, err = clientcmd.BuildConfigFromFlags("", kubeConfigPath)
+		}
 
 		// Create the client for kubernetes
-		kclient, err:= kubernetes.NewForConfig(config)
+		kclient, err := kubernetes.NewForConfig(clusterConfig)
 		if err != nil {
-            return nil, fmt.Errorf("failed to create kubernetes client: %v", err)
-        }
+			return nil, fmt.Errorf("failed to create kubernetes client: %v", err)
+		}
 
 		// Retrieve router CA cert
 		routerCAConfigMap, err := kclient.CoreV1().ConfigMaps("openshift-config-managed").Get(context.TODO(), "default-ingress-cert", metav1.GetOptions{})
@@ -132,7 +132,7 @@ func NewPromClient(opts watcher.MetricsProviderOpts) (watcher.MetricsProviderCli
 				KeepAlive: 30 * time.Second,
 			}).DialContext,
 			TLSHandshakeTimeout: 10 * time.Second,
-			TLSClientConfig: &tls.Config{InsecureSkipVerify : true},
+			TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
 		}
 	}
 
@@ -182,7 +182,7 @@ func (s promClient) FetchHostMetrics(host string, window *watcher.Window) ([]wat
 	return metricList, anyerr
 }
 
-// Fetch all host metrics with different operators (avg_over_time, stddev_over_time) and diffrent resource types (CPU, Memory)
+// FetchAllHostsMetrics Fetch all host metrics with different operators (avg_over_time, stddev_over_time) and diffrent resource types (CPU, Memory)
 func (s promClient) FetchAllHostsMetrics(window *watcher.Window) (map[string][]watcher.Metric, error) {
 	hostMetrics := make(map[string][]watcher.Metric)
 	var anyerr error
@@ -254,15 +254,15 @@ func (s promClient) getPromResults(promQuery string) (model.Value, error) {
 }
 
 func (s promClient) promResults2MetricMap(promresults model.Value, metric string, method string, rollup string) map[string][]watcher.Metric {
-	var metric_type string
+	var metricType string
 	var operator string
 
 	curMetrics := make(map[string][]watcher.Metric)
 
 	if metric == promCpuMetric {
-		metric_type = watcher.CPU
+		metricType = watcher.CPU
 	} else {
-		metric_type = watcher.Memory
+		metricType = watcher.Memory
 	}
 
 	if method == promAvg {
@@ -276,7 +276,7 @@ func (s promClient) promResults2MetricMap(promresults model.Value, metric string
 	switch promresults.(type) {
 	case model.Vector:
 		for _, result := range promresults.(model.Vector) {
-			curMetric := watcher.Metric{metric, metric_type, operator, rollup, float64(result.Value * 100)}
+			curMetric := watcher.Metric{Name: metric, Type: metricType, Operator: operator, Rollup: rollup, Value: float64(result.Value * 100)}
 			curHost := string(result.Metric[hostMetricKey])
 			curMetrics[curHost] = append(curMetrics[curHost], curMetric)
 		}
