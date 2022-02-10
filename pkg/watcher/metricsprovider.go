@@ -16,7 +16,10 @@ limitations under the License.
 
 package watcher
 
-import "os"
+import (
+	"os"
+	"strings"
+)
 
 const (
 	K8sClientName      = "KubernetesMetricsServer"
@@ -26,7 +29,7 @@ const (
 	MetricsProviderNameKey    = "METRICS_PROVIDER_NAME"
 	MetricsProviderAddressKey = "METRICS_PROVIDER_ADDRESS"
 	MetricsProviderTokenKey   = "METRICS_PROVIDER_TOKEN"
-	InsecureSkipVerify        = "InsecureSkipVerify"
+	InsecureSkipVerify        = "INSECURE_SKIP_VERIFY"
 )
 
 var (
@@ -41,7 +44,12 @@ func init() {
 	}
 	EnvMetricProviderOpts.Address, ok = os.LookupEnv(MetricsProviderAddressKey)
 	EnvMetricProviderOpts.AuthToken, ok = os.LookupEnv(MetricsProviderTokenKey)
-	_, EnvMetricProviderOpts.InsecureSkipVerify = os.LookupEnv(InsecureSkipVerify)
+	insecureVerify, ok := os.LookupEnv(InsecureSkipVerify)
+	if strings.ToLower(insecureVerify) == "true" {
+        EnvMetricProviderOpts.InsecureSkipVerify = true
+    } else {
+        EnvMetricProviderOpts.InsecureSkipVerify = false
+    }
 }
 
 // Interface to be implemented by any metrics provider client to interact with Watcher

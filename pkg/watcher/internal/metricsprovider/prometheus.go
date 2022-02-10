@@ -43,7 +43,7 @@ import (
 )
 
 const (
-	EnableOpenShiftAuth = "EnableOpenShiftAuth"
+	EnableOpenShiftAuth = "ENABLE_OPENSHIFT_AUTH"
 	DefaultPromAddress  = "http://prometheus-k8s:9090"
 	promStd             = "stddev_over_time"
 	promAvg             = "avg_over_time"
@@ -88,6 +88,9 @@ func NewPromClient(opts watcher.MetricsProviderOpts) (watcher.MetricsProviderCli
 				kubeConfigPath = defaultKubeConfig
 			}
 			clusterConfig, err = clientcmd.BuildConfigFromFlags("", kubeConfigPath)
+			if err != nil {
+                return nil, fmt.Errorf("failed to get kubernetes config: %v", err)
+            }
 		}
 
 		// Create the client for kubernetes
@@ -182,7 +185,7 @@ func (s promClient) FetchHostMetrics(host string, window *watcher.Window) ([]wat
 	return metricList, anyerr
 }
 
-// FetchAllHostsMetrics Fetch all host metrics with different operators (avg_over_time, stddev_over_time) and diffrent resource types (CPU, Memory)
+// FetchAllHostsMetrics Fetch all host metrics with different operators (avg_over_time, stddev_over_time) and different resource types (CPU, Memory)
 func (s promClient) FetchAllHostsMetrics(window *watcher.Window) (map[string][]watcher.Metric, error) {
 	hostMetrics := make(map[string][]watcher.Metric)
 	var anyerr error
