@@ -89,8 +89,8 @@ func NewPromClient(opts watcher.MetricsProviderOpts) (watcher.MetricsProviderCli
 			}
 			clusterConfig, err = clientcmd.BuildConfigFromFlags("", kubeConfigPath)
 			if err != nil {
-                return nil, fmt.Errorf("failed to get kubernetes config: %v", err)
-            }
+				return nil, fmt.Errorf("failed to get kubernetes config: %v", err)
+			}
 		}
 
 		// Create the client for kubernetes

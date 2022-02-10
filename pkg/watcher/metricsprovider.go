@@ -46,10 +46,10 @@ func init() {
 	EnvMetricProviderOpts.AuthToken, ok = os.LookupEnv(MetricsProviderTokenKey)
 	insecureVerify, _ := os.LookupEnv(InsecureSkipVerify)
 	if strings.ToLower(insecureVerify) == "true" {
-        EnvMetricProviderOpts.InsecureSkipVerify = true
-    } else {
-        EnvMetricProviderOpts.InsecureSkipVerify = false
-    }
+		EnvMetricProviderOpts.InsecureSkipVerify = true
+	} else {
+		EnvMetricProviderOpts.InsecureSkipVerify = false
+	}
 }
 
 // Interface to be implemented by any metrics provider client to interact with Watcher
