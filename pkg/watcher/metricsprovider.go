@@ -44,7 +44,7 @@ func init() {
 	}
 	EnvMetricProviderOpts.Address, ok = os.LookupEnv(MetricsProviderAddressKey)
 	EnvMetricProviderOpts.AuthToken, ok = os.LookupEnv(MetricsProviderTokenKey)
-	insecureVerify, ok := os.LookupEnv(InsecureSkipVerify)
+	insecureVerify, _ := os.LookupEnv(InsecureSkipVerify)
 	if strings.ToLower(insecureVerify) == "true" {
         EnvMetricProviderOpts.InsecureSkipVerify = true
     } else {
