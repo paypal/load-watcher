@@ -43,15 +43,20 @@ import (
 )
 
 const (
-	EnableOpenShiftAuth = "ENABLE_OPENSHIFT_AUTH"
-	DefaultPromAddress  = "http://prometheus-k8s:9090"
-	promStd             = "stddev_over_time"
-	promAvg             = "avg_over_time"
-	promCpuMetric       = "instance:node_cpu:ratio"
-	promMemMetric       = "instance:node_memory_utilisation:ratio"
-	allHosts            = "all"
-	hostMetricKey       = "instance"
-	defaultKubeConfig   = "~/.kube/config"
+	EnableOpenShiftAuth     = "ENABLE_OPENSHIFT_AUTH"
+	DefaultPromAddress      = "http://prometheus-k8s:9090"
+	promStd                 = "stddev_over_time"
+	promAvg                 = "avg_over_time"
+	promCpuMetric           = "instance:node_cpu:ratio"
+	promMemMetric           = "instance:node_memory_utilisation:ratio"
+	promTransBandMetric     = "instance:node_network_transmit_bytes:rate:sum"
+	promTransBandDropMetric = "instance:node_network_transmit_drop_excluding_lo:rate5m"
+	promRecBandMetric       = "instance:node_network_receive_bytes:rate:sum"
+	promRecBandDropMetric   = "instance:node_network_receive_drop_excluding_lo:rate5m"
+	promDiskIOMetric        = "instance_device:node_disk_io_time_seconds:rate5m"
+	allHosts                = "all"
+	hostMetricKey           = "instance"
+	defaultKubeConfig       = "~/.kube/config"
 )
 
 type promClient struct {
@@ -167,7 +172,7 @@ func (s promClient) FetchHostMetrics(host string, window *watcher.Window) ([]wat
 	var anyerr error
 
 	for _, method := range []string{promAvg, promStd} {
-		for _, metric := range []string{promCpuMetric, promMemMetric} {
+		for _, metric := range []string{promCpuMetric, promMemMetric, promTransBandMetric, promTransBandDropMetric, promRecBandMetric, promRecBandDropMetric, promDiskIOMetric} {
 			promQuery := s.buildPromQuery(host, metric, method, window.Duration)
 			promResults, err := s.getPromResults(promQuery)
 
@@ -191,7 +196,7 @@ func (s promClient) FetchAllHostsMetrics(window *watcher.Window) (map[string][]w
 	var anyerr error
 
 	for _, method := range []string{promAvg, promStd} {
-		for _, metric := range []string{promCpuMetric, promMemMetric} {
+		for _, metric := range []string{promCpuMetric, promMemMetric, promTransBandMetric, promTransBandDropMetric, promRecBandMetric, promRecBandDropMetric, promDiskIOMetric} {
 			promQuery := s.buildPromQuery(allHosts, metric, method, window.Duration)
 			promResults, err := s.getPromResults(promQuery)
 
@@ -264,8 +269,12 @@ func (s promClient) promResults2MetricMap(promresults model.Value, metric string
 
 	if metric == promCpuMetric {
 		metricType = watcher.CPU
-	} else {
+	} else if metric == promMemMetric {
 		metricType = watcher.Memory
+	} else if metric == promDiskIOMetric {
+		metricType = watcher.Storage
+	} else {
+		metricType = watcher.Bandwidth
 	}
 
 	if method == promAvg {
