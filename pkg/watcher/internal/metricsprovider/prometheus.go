@@ -41,7 +41,7 @@ import (
 
 const (
 	EnableOpenShiftAuth     = "ENABLE_OPENSHIFT_AUTH"
-	K8sPodCAFilePath		= "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+	K8sPodCAFilePath        = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
 	DefaultPromAddress      = "http://prometheus-k8s:9090"
 	promStd                 = "stddev_over_time"
 	promAvg                 = "avg_over_time"
@@ -54,7 +54,6 @@ const (
 	promDiskIOMetric        = "instance_device:node_disk_io_time_seconds:rate5m"
 	allHosts                = "all"
 	hostMetricKey           = "instance"
-	defaultKubeConfig       = "~/.kube/config"
 )
 
 type promClient struct {
@@ -99,7 +98,7 @@ func NewPromClient(opts watcher.MetricsProviderOpts) (watcher.MetricsProviderCli
 		// Retrieve Pod CA cert
 		caCertPool, err := loadCAFile(K8sPodCAFilePath)
 		if err != nil {
-			log.Fatalf("Error loading CA file: %v", err)
+			return nil, fmt.Errorf("Error loading CA file: %v", err)
 		}
 
 		// Get Prometheus Host
