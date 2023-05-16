@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: load-watcher-deployment
+  namespace: loadwatcher
+  labels:
+    app: load-watcher
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: load-watcher
+  template:
+    metadata:
+      labels:
+        app: load-watcher
+    spec:
+      containers:
+      - name: load-watcher
+        image: [load-watcher image]
+        env:
+        - name: METRICS_PROVIDER_NAME
+          value: [Prometheus/SignalFx]
+        - name: METRICS_PROVIDER_ADDRESS
+          value: [metrics_provider_endpoint]
+        - name: METRICS_PROVIDER_TOKEN
+          value: [token]
+        ports:
+        - containerPort: 2020
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: loadwatcher
+  name: load-watcher
+  labels:
+    app: load-watcher
+spec:
+  type: ClusterIP
+  ports:
+  - name: http
+    port: 2020
+    targetPort: 2020
+    protocol: TCP
+  selector:
+    app: load-watcher

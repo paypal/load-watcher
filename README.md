@@ -44,7 +44,7 @@ This will return metrics for all nodes. A query parameter to filter by host can 
 - To use the SignalFx client, please configure environment variables `METRICS_PROVIDER_NAME`, `METRICS_PROVIDER_ADDRESS` and `METRICS_PROVIDER_TOKEN` to `SignalFx`, SignalFx address and auth token respectively. Default value of address set is `https://api.signalfx.com` for SignalFx client.
   
 ## Deploy `load-watcher` as a service
-To deploy `load-watcher` as a monitoring service in your Kubernetes cluster, you can run the following.
+To deploy `load-watcher` as a monitoring service in your Kubernetes cluster, you should replace the values in the `[]` with your own cluster monitoring stack and then you can run the following.
 ```bash
 > kubectl create -f manifests/load-watcher-deployment.yaml
 ```
