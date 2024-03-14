@@ -45,7 +45,7 @@ const (
 	DefaultPromAddress      = "http://prometheus-k8s:9090"
 	promStd                 = "stddev_over_time"
 	promAvg                 = "avg_over_time"
-	promCpuMetric           = "instance:node_cpu:rate:sum"
+	promCpuMetric           = "instance:node_cpu_utilisation:rate1m"
 	promMemMetric           = "instance:node_memory_utilisation:ratio"
 	promTransBandMetric     = "instance:node_network_transmit_bytes:rate:sum"
 	promTransBandDropMetric = "instance:node_network_transmit_drop_excluding_lo:rate5m"
