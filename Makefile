@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-COMMONENVVAR=GOOS=$(shell uname -s | tr A-Z a-z) GOARCH=$(subst x86_64,amd64,$(patsubst i%86,386,$(shell uname -m)))
+COMMONENVVAR=GOOS=$(shell uname -s | tr A-Z a-z) GOARCH=$(subst aarch64,arm64,$(subst x86_64,amd64,$(patsubst i%86,386,$(shell uname -m))))
 BUILDENVVAR=CGO_ENABLED=0
 
 .PHONY: all
