@@ -19,6 +19,10 @@ BUILDENVVAR=CGO_ENABLED=0
 all: build
 	chmod +x bin/load-watcher
 
+.PHONY: test
+test:
+	go test ./...
+
 .PHONY: build
 build:
 	$(COMMONENVVAR) $(BUILDENVVAR) go build -o bin/load-watcher main.go

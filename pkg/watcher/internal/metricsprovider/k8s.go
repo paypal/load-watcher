@@ -75,16 +75,16 @@ func NewMetricsServerClient() (watcher.MetricsProviderClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	return metricsServerClient{
+	return &metricsServerClient{
 		metricsClientSet: metricsClientSet,
 		coreClientSet:    clientSet}, nil
 }
 
-func (m metricsServerClient) Name() string {
+func (m *metricsServerClient) Name() string {
 	return watcher.K8sClientName
 }
 
-func (m metricsServerClient) FetchHostMetrics(host string, window *watcher.Window) ([]watcher.Metric, error) {
+func (m *metricsServerClient) FetchHostMetrics(host string, window *watcher.Window) ([]watcher.Metric, error) {
 	var metrics = []watcher.Metric{}
 
 	nodeMetrics, err := m.metricsClientSet.MetricsV1beta1().NodeMetricses().Get(context.TODO(), host, metav1.GetOptions{})
@@ -112,7 +112,7 @@ func (m metricsServerClient) FetchHostMetrics(host string, window *watcher.Windo
 	return metrics, nil
 }
 
-func (m metricsServerClient) FetchAllHostsMetrics(window *watcher.Window) (map[string][]watcher.Metric, error) {
+func (m *metricsServerClient) FetchAllHostsMetrics(window *watcher.Window) (map[string][]watcher.Metric, error) {
 	metrics := make(map[string][]watcher.Metric)
 
 	nodeMetricsList, err := m.metricsClientSet.MetricsV1beta1().NodeMetricses().List(context.TODO(), metav1.ListOptions{})
@@ -156,7 +156,7 @@ func (m metricsServerClient) FetchAllHostsMetrics(window *watcher.Window) (map[s
 	return metrics, nil
 }
 
-func (m metricsServerClient) Health() (int, error) {
+func (m *metricsServerClient) Health() (int, error) {
 	var status int
 	m.metricsClientSet.RESTClient().Verb("HEAD").Do(context.Background()).StatusCode(&status)
 	if status != http.StatusOK {
