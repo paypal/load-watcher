@@ -46,6 +46,7 @@ const (
 	Bandwidth       = "Bandwidth"
 	Storage         = "Storage"
 	Energy          = "Energy"
+	Unknown         = "Unknown"
 	Average         = "AVG"
 	Std             = "STD"
 	Latest          = "Latest"

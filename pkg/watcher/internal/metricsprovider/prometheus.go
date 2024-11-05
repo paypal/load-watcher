@@ -267,34 +267,24 @@ func (s promClient) promResults2MetricMap(promresults model.Value, metric string
 
 	curMetrics := make(map[string][]watcher.Metric)
 
-	if metric == promCpuMetric {
+	switch metric {
+	case promCpuMetric: // CPU metrics
 		metricType = watcher.CPU
-	} else if metric == promMemMetric {
+	case promMemMetric: // Memory metrics
 		metricType = watcher.Memory
-	} else if metric == promDiskIOMetric {
+	case promDiskIOMetric: // Storage metrics
 		metricType = watcher.Storage
-	} else if metric == promScaphHostPower {
+	case promScaphHostPower, promScaphHostJoules, // Energy-related metrics
+		promKeplerHostCoreJoules, promKeplerHostUncoreJoules,
+		promKeplerHostDRAMJoules, promKeplerHostPackageJoules,
+		promKeplerHostOtherJoules, promKeplerHostGPUJoules,
+		promKeplerHostPlatformJoules, promKeplerHostEnergyStat:
 		metricType = watcher.Energy
-	} else if metric == promScaphHostJoules {
-		metricType = watcher.Energy
-	} else if metric == promKeplerHostCoreJoules {
-		metricType = watcher.Energy
-	} else if metric == promKeplerHostUncoreJoules {
-		metricType = watcher.Energy
-	} else if metric == promKeplerHostDRAMJoules {
-		metricType = watcher.Energy
-	} else if metric == promKeplerHostPackageJoules {
-		metricType = watcher.Energy
-	} else if metric == promKeplerHostOtherJoules {
-		metricType = watcher.Energy
-	} else if metric == promKeplerHostGPUJoules {
-		metricType = watcher.Energy
-	} else if metric == promKeplerHostPlatformJoules {
-		metricType = watcher.Energy
-	} else if metric == promKeplerHostEnergyStat {
-		metricType = watcher.Energy
-	} else {
+	case promTransBandMetric, promTransBandDropMetric, // Bandwidth-related metrics
+		promRecBandMetric, promRecBandDropMetric:
 		metricType = watcher.Bandwidth
+	default:
+		metricType = watcher.Unknown
 	}
 
 	if method == promAvg {
