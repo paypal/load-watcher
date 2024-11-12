@@ -22,12 +22,13 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
-	"k8s.io/client-go/transport"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"time"
+
+	"k8s.io/client-go/transport"
 
 	"github.com/paypal/load-watcher/pkg/watcher"
 	"github.com/prometheus/client_golang/api"
@@ -133,7 +134,7 @@ func NewPromClient(opts watcher.MetricsProviderOpts) (watcher.MetricsProviderCli
 	if promToken != "" {
 		client, err = api.NewClient(api.Config{
 			Address:      promAddress,
-			RoundTripper: config.NewAuthorizationCredentialsRoundTripper("Bearer", config.Secret(opts.AuthToken), roundTripper),
+			RoundTripper: config.NewAuthorizationCredentialsRoundTripper("Bearer", config.NewInlineSecret(opts.AuthToken), roundTripper),
 		})
 	} else {
 		client, err = api.NewClient(api.Config{
