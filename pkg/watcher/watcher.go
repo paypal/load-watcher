@@ -15,9 +15,9 @@ limitations under the License.
 */
 
 /*
-	Package Watcher is responsible for watching latest metrics from metrics provider via a fetcher client.
-	It exposes an HTTP REST endpoint to get these metrics, in addition to application API via clients
-	This also uses a fast json parser
+Package Watcher is responsible for watching latest metrics from metrics provider via a fetcher client.
+It exposes an HTTP REST endpoint to get these metrics, in addition to application API via clients
+This also uses a fast json parser
 */
 package watcher
 
@@ -45,6 +45,8 @@ const (
 	Memory          = "Memory"
 	Bandwidth       = "Bandwidth"
 	Storage         = "Storage"
+	Energy          = "Energy"
+	Unknown         = "Unknown"
 	Average         = "AVG"
 	Std             = "STD"
 	Latest          = "Latest"
