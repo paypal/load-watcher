@@ -25,10 +25,12 @@ const (
 	K8sClientName      = "KubernetesMetricsServer"
 	PromClientName     = "Prometheus"
 	SignalFxClientName = "SignalFx"
+	DatadogClientName  = "Datadog"
 
 	MetricsProviderNameKey    = "METRICS_PROVIDER_NAME"
 	MetricsProviderAddressKey = "METRICS_PROVIDER_ADDRESS"
 	MetricsProviderTokenKey   = "METRICS_PROVIDER_TOKEN"
+	MetricsProviderAppKey     = "METRICS_PROVIDER_APP_KEY"
 	InsecureSkipVerify        = "INSECURE_SKIP_VERIFY"
 )
 
@@ -44,6 +46,7 @@ func init() {
 	}
 	EnvMetricProviderOpts.Address, ok = os.LookupEnv(MetricsProviderAddressKey)
 	EnvMetricProviderOpts.AuthToken, ok = os.LookupEnv(MetricsProviderTokenKey)
+	EnvMetricProviderOpts.ApplicationKey, ok = os.LookupEnv(MetricsProviderAppKey)
 	insecureVerify, _ := os.LookupEnv(InsecureSkipVerify)
 	if strings.ToLower(insecureVerify) == "true" {
 		EnvMetricProviderOpts.InsecureSkipVerify = true
@@ -70,5 +73,6 @@ type MetricsProviderOpts struct {
 	Name               string
 	Address            string
 	AuthToken          string
+	ApplicationKey     string
 	InsecureSkipVerify bool
 }

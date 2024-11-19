@@ -53,6 +53,8 @@ func NewLibraryClient(opts watcher.MetricsProviderOpts) (Client, error) {
 		client.fetcherClient, err = metricsprovider.NewPromClient(opts)
 	case watcher.SignalFxClientName:
 		client.fetcherClient, err = metricsprovider.NewSignalFxClient(opts)
+	case watcher.DatadogClientName:
+		client.fetcherClient, err = metricsprovider.NewDatadogClient(opts)
 	default:
 		client.fetcherClient, err = metricsprovider.NewMetricsServerClient()
 	}
