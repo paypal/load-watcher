@@ -157,14 +157,14 @@ func NewPromClient(opts watcher.MetricsProviderOpts) (watcher.MetricsProviderCli
 		return nil, err
 	}
 
-	return promClient{client}, err
+	return &promClient{client}, err
 }
 
-func (s promClient) Name() string {
+func (s *promClient) Name() string {
 	return watcher.PromClientName
 }
 
-func (s promClient) FetchHostMetrics(host string, window *watcher.Window) ([]watcher.Metric, error) {
+func (s *promClient) FetchHostMetrics(host string, window *watcher.Window) ([]watcher.Metric, error) {
 	var metricList []watcher.Metric
 	var anyerr error
 
@@ -190,7 +190,7 @@ func (s promClient) FetchHostMetrics(host string, window *watcher.Window) ([]wat
 }
 
 // FetchAllHostsMetrics Fetch all host metrics with different operators (avg_over_time, stddev_over_time) and different resource types (CPU, Memory)
-func (s promClient) FetchAllHostsMetrics(window *watcher.Window) (map[string][]watcher.Metric, error) {
+func (s *promClient) FetchAllHostsMetrics(window *watcher.Window) (map[string][]watcher.Metric, error) {
 	hostMetrics := make(map[string][]watcher.Metric)
 	var anyerr error
 
@@ -218,7 +218,7 @@ func (s promClient) FetchAllHostsMetrics(window *watcher.Window) (map[string][]w
 	return hostMetrics, anyerr
 }
 
-func (s promClient) Health() (int, error) {
+func (s *promClient) Health() (int, error) {
 	req, err := http.NewRequest("HEAD", DefaultPromAddress, nil)
 	if err != nil {
 		return -1, err
@@ -233,7 +233,7 @@ func (s promClient) Health() (int, error) {
 	return 0, nil
 }
 
-func (s promClient) buildPromQuery(host string, metric string, method string, rollup string) string {
+func (s *promClient) buildPromQuery(host string, metric string, method string, rollup string) string {
 	var promQuery string
 
 	if host == allHosts {
@@ -262,7 +262,7 @@ func (s promClient) getPromResults(promQuery string) (model.Value, error) {
 	return results, nil
 }
 
-func (s promClient) promResults2MetricMap(promresults model.Value, metric string, method string, rollup string) map[string][]watcher.Metric {
+func (s *promClient) promResults2MetricMap(promresults model.Value, metric string, method string, rollup string) map[string][]watcher.Metric {
 	var metricType string
 	var operator string
 
