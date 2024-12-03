@@ -22,12 +22,13 @@ import (
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
-	"k8s.io/client-go/transport"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"time"
+
+	"k8s.io/client-go/transport"
 
 	"github.com/paypal/load-watcher/pkg/watcher"
 	"github.com/prometheus/client_golang/api"
@@ -40,20 +41,30 @@ import (
 )
 
 const (
-	EnableOpenShiftAuth     = "ENABLE_OPENSHIFT_AUTH"
-	K8sPodCAFilePath        = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
-	DefaultPromAddress      = "http://prometheus-k8s:9090"
-	promStd                 = "stddev_over_time"
-	promAvg                 = "avg_over_time"
-	promCpuMetric           = "instance:node_cpu:ratio"
-	promMemMetric           = "instance:node_memory_utilisation:ratio"
-	promTransBandMetric     = "instance:node_network_transmit_bytes:rate:sum"
-	promTransBandDropMetric = "instance:node_network_transmit_drop_excluding_lo:rate5m"
-	promRecBandMetric       = "instance:node_network_receive_bytes:rate:sum"
-	promRecBandDropMetric   = "instance:node_network_receive_drop_excluding_lo:rate5m"
-	promDiskIOMetric        = "instance_device:node_disk_io_time_seconds:rate5m"
-	allHosts                = "all"
-	hostMetricKey           = "instance"
+	EnableOpenShiftAuth          = "ENABLE_OPENSHIFT_AUTH"
+	K8sPodCAFilePath             = "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"
+	DefaultPromAddress           = "http://prometheus-k8s:9090"
+	promStd                      = "stddev_over_time"
+	promAvg                      = "avg_over_time"
+	promCpuMetric                = "instance:node_cpu:ratio"
+	promMemMetric                = "instance:node_memory_utilisation:ratio"
+	promTransBandMetric          = "instance:node_network_transmit_bytes:rate:sum"
+	promTransBandDropMetric      = "instance:node_network_transmit_drop_excluding_lo:rate5m"
+	promRecBandMetric            = "instance:node_network_receive_bytes:rate:sum"
+	promRecBandDropMetric        = "instance:node_network_receive_drop_excluding_lo:rate5m"
+	promDiskIOMetric             = "instance_device:node_disk_io_time_seconds:rate5m"
+	promScaphHostPower           = "scaph_host_power_microwatts"
+	promScaphHostJoules          = "scaph_host_energy_microjoules"
+	promKeplerHostCoreJoules     = "kepler_node_core_joules_total"
+	promKeplerHostUncoreJoules   = "kepler_node_uncore_joules_total"
+	promKeplerHostDRAMJoules     = "kepler_node_dram_joules_total"
+	promKeplerHostPackageJoules  = "kepler_node_package_joules_total"
+	promKeplerHostOtherJoules    = "kepler_node_other_joules_total"
+	promKeplerHostGPUJoules      = "kepler_node_gpu_joules_total"
+	promKeplerHostPlatformJoules = "kepler_node_platform_joules_total"
+	promKeplerHostEnergyStat     = "kepler_node_energy_stat"
+	allHosts                     = "all"
+	hostMetricKey                = "instance"
 )
 
 type promClient struct {
@@ -133,7 +144,7 @@ func NewPromClient(opts watcher.MetricsProviderOpts) (watcher.MetricsProviderCli
 	if promToken != "" {
 		client, err = api.NewClient(api.Config{
 			Address:      promAddress,
-			RoundTripper: config.NewAuthorizationCredentialsRoundTripper("Bearer", config.Secret(opts.AuthToken), roundTripper),
+			RoundTripper: config.NewAuthorizationCredentialsRoundTripper("Bearer", config.NewInlineSecret(opts.AuthToken), roundTripper),
 		})
 	} else {
 		client, err = api.NewClient(api.Config{
@@ -158,7 +169,9 @@ func (s promClient) FetchHostMetrics(host string, window *watcher.Window) ([]wat
 	var anyerr error
 
 	for _, method := range []string{promAvg, promStd} {
-		for _, metric := range []string{promCpuMetric, promMemMetric, promTransBandMetric, promTransBandDropMetric, promRecBandMetric, promRecBandDropMetric, promDiskIOMetric} {
+		for _, metric := range []string{promCpuMetric, promMemMetric, promTransBandMetric, promTransBandDropMetric, promRecBandMetric, promRecBandDropMetric,
+			promDiskIOMetric, promScaphHostPower, promScaphHostJoules, promKeplerHostCoreJoules, promKeplerHostUncoreJoules, promKeplerHostDRAMJoules,
+			promKeplerHostPackageJoules, promKeplerHostOtherJoules, promKeplerHostGPUJoules, promKeplerHostPlatformJoules, promKeplerHostEnergyStat} {
 			promQuery := s.buildPromQuery(host, metric, method, window.Duration)
 			promResults, err := s.getPromResults(promQuery)
 
@@ -182,7 +195,9 @@ func (s promClient) FetchAllHostsMetrics(window *watcher.Window) (map[string][]w
 	var anyerr error
 
 	for _, method := range []string{promAvg, promStd} {
-		for _, metric := range []string{promCpuMetric, promMemMetric, promTransBandMetric, promTransBandDropMetric, promRecBandMetric, promRecBandDropMetric, promDiskIOMetric} {
+		for _, metric := range []string{promCpuMetric, promMemMetric, promTransBandMetric, promTransBandDropMetric, promRecBandMetric, promRecBandDropMetric,
+			promDiskIOMetric, promScaphHostPower, promScaphHostJoules, promKeplerHostCoreJoules, promKeplerHostUncoreJoules, promKeplerHostDRAMJoules,
+			promKeplerHostPackageJoules, promKeplerHostOtherJoules, promKeplerHostGPUJoules, promKeplerHostPlatformJoules, promKeplerHostEnergyStat} {
 			promQuery := s.buildPromQuery(allHosts, metric, method, window.Duration)
 			promResults, err := s.getPromResults(promQuery)
 
@@ -253,14 +268,24 @@ func (s promClient) promResults2MetricMap(promresults model.Value, metric string
 
 	curMetrics := make(map[string][]watcher.Metric)
 
-	if metric == promCpuMetric {
+	switch metric {
+	case promCpuMetric: // CPU metrics
 		metricType = watcher.CPU
-	} else if metric == promMemMetric {
+	case promMemMetric: // Memory metrics
 		metricType = watcher.Memory
-	} else if metric == promDiskIOMetric {
+	case promDiskIOMetric: // Storage metrics
 		metricType = watcher.Storage
-	} else {
+	case promScaphHostPower, promScaphHostJoules, // Energy-related metrics
+		promKeplerHostCoreJoules, promKeplerHostUncoreJoules,
+		promKeplerHostDRAMJoules, promKeplerHostPackageJoules,
+		promKeplerHostOtherJoules, promKeplerHostGPUJoules,
+		promKeplerHostPlatformJoules, promKeplerHostEnergyStat:
+		metricType = watcher.Energy
+	case promTransBandMetric, promTransBandDropMetric, // Bandwidth-related metrics
+		promRecBandMetric, promRecBandDropMetric:
 		metricType = watcher.Bandwidth
+	default:
+		metricType = watcher.Unknown
 	}
 
 	if method == promAvg {
