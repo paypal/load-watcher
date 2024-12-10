@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-COMMONENVVAR=GOOS=$(shell uname -s | tr A-Z a-z) GOARCH=$(subst x86_64,amd64,$(patsubst i%86,386,$(shell uname -m)))
 BUILDENVVAR=CGO_ENABLED=0
 
 .PHONY: all
@@ -21,7 +20,15 @@ all: build
 
 .PHONY: build
 build:
-	$(COMMONENVVAR) $(BUILDENVVAR) go build -o bin/load-watcher main.go
+	GOOS=linux $(BUILDENVVAR) GOARCH=arm64 go build -o bin/load-watcher main.go
+
+.PHONY:	build.amd64
+build.amd64:
+	GOOS=darwin $(BUILDENVVAR) GOARCH=amd64 go build -o bin/load-watcher main.go
+
+.PHONY:	build.arm64
+build.arm64:
+	GOOS=linux $(BUILDENVVAR) GOARCH=arm64 go build -o bin/load-watcher main.go
 
 .PHONY: clean
 clean:

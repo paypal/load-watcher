@@ -1,7 +1,9 @@
-FROM golang:1.16
+ARG BUILD_SPEC="build.amd64"
+FROM golang:1.22
+
 WORKDIR /go/src/github.com/paypal/load-watcher
 COPY . .
-RUN make build
+RUN make ${BUILD_SPEC}
 
 FROM alpine:3.12
 

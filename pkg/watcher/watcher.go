@@ -24,6 +24,7 @@ package watcher
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -137,7 +138,6 @@ func (w *Watcher) StartWatching() {
 		}
 		log.Debugf("fetched metrics for window: %v", curWindow)
 
-		// TODO： add tags, etc.
 		watcherMetrics := metricMapToWatcherMetrics(hostMetrics, w.client.Name(), *curWindow)
 		w.appendWatcherMetrics(metric, &watcherMetrics)
 	}
@@ -285,6 +285,10 @@ func (w *Watcher) handler(resp http.ResponseWriter, r *http.Request) {
 			bytes, err = gojay.MarshalJSONObject(&hostMetrics)
 		} else {
 			resp.WriteHeader(http.StatusNotFound)
+			// Write out response for no metrics found
+			errString := fmt.Sprintf("No metrics found for host %s", host)
+			byteArray := []byte(errString)
+			resp.Write(byteArray)
 			return
 		}
 	} else {
