@@ -162,7 +162,7 @@ func TestDDFetchAllHostMetrics(t *testing.T) {
 	err := resp.UnmarshalJSON(bytes)
 	assert.Nil(t, err)
 
-	metrics, err1 := GetMetricsFromTimeSeriesResponse(*resp)
+	metrics, err1 := getMetricsFromTimeSeriesResponse(*resp)
 
 	assert.Nil(t, err1)
 	assert.NotNil(t, metrics)
@@ -260,7 +260,7 @@ func TestDDFetchHostMetrics(t *testing.T) {
 	err := resp.UnmarshalJSON(bytes)
 	assert.Nil(t, err)
 
-	metrics, err1 := GetMetricsFromTimeSeriesResponse(*resp)
+	metrics, err1 := getMetricsFromTimeSeriesResponse(*resp)
 
 	assert.Nil(t, err1)
 	assert.NotNil(t, metrics)

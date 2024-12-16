@@ -221,11 +221,11 @@ func (s datadogClient) getMetricsHelper(window *watcher.Window, host string) (ma
 	responseContent, _ := json.MarshalIndent(resp, "", "  ")
 	log.Debugf("Response from MetricsApi.QueryTimeseriesData:\n%s\n", responseContent)
 
-	return GetMetricsFromTimeSeriesResponse(resp)
+	return getMetricsFromTimeSeriesResponse(resp)
 }
 
 // This method parses the datadogV2 time series response and return a map with key hostname, value an array of watcher.Metric
-func GetMetricsFromTimeSeriesResponse(resp datadogV2.TimeseriesFormulaQueryResponse) (map[string][]watcher.Metric, error) {
+func getMetricsFromTimeSeriesResponse(resp datadogV2.TimeseriesFormulaQueryResponse) (map[string][]watcher.Metric, error) {
 	metrics := make(map[string][]watcher.Metric)
 	timeSeriesData, ok := resp.GetDataOk()
 	if !ok {
