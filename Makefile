@@ -20,15 +20,15 @@ all: build
 
 .PHONY: build
 build:
-	GOOS=linux $(BUILDENVVAR) GOARCH=arm64 go build -o bin/load-watcher main.go
+	GOOS=linux $(BUILDENVVAR) GOARCH=amd64 go build -o bin/load-watcher main.go
 
 .PHONY:	build.amd64
 build.amd64:
-	GOOS=darwin $(BUILDENVVAR) GOARCH=amd64 go build -o bin/load-watcher main.go
+	GOOS=linux$(BUILDENVVAR) GOARCH=amd64 go build -o bin/load-watcher main.go
 
 .PHONY:	build.arm64
 build.arm64:
-	GOOS=linux $(BUILDENVVAR) GOARCH=arm64 go build -o bin/load-watcher main.go
+	GOOS=darwin $(BUILDENVVAR) GOARCH=arm64 go build -o bin/load-watcher main.go
 
 .PHONY: clean
 clean:
