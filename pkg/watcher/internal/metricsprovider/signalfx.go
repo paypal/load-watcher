@@ -37,9 +37,9 @@ const (
 	DefaultSignalFxAddress    = "https://api.signalfx.com"
 	signalFxMetricsAPI        = "/v1/timeserieswindow"
 	signalFxMetdataAPI        = "/v2/metrictimeseries"
-	signalFxHostFilter        = "host:"
-	signalFxClusterFilter     = "cluster:"
+	signalFxHostFilter        = "SIGNALFX_HOST_FILTER"
 	signalFxHostNameSuffixKey = "SIGNALFX_HOST_NAME_SUFFIX"
+	signalFxClusterFilter     = "SIGNALFX_ClUSTER_FILTER"
 	signalFxClusterName       = "SIGNALFX_CLUSTER_NAME"
 	// SignalFX Query Params
 	oneMinuteResolutionMs   = 60000
@@ -56,7 +56,9 @@ type signalFxClient struct {
 	client          http.Client
 	authToken       string
 	signalFxAddress string
+	hostKey			string
 	hostNameSuffix  string
+	clusterKey		string
 	clusterName     string
 }
 
@@ -67,8 +69,27 @@ func NewSignalFxClient(opts watcher.MetricsProviderOpts) (watcher.MetricsProvide
 	tlsConfig := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: opts.InsecureSkipVerify}, // TODO(aqadeer): Figure out a secure way to let users add SSL certs
 	}
-	hostNameSuffix, _ := os.LookupEnv(signalFxHostNameSuffixKey)
-	clusterName, _ := os.LookupEnv(signalFxClusterName)
+
+	hostKey, ok := os.LookupEnv(signalFxHostFilter)
+	if !ok {
+		hostKey = "host"
+	}
+
+	hostNameSuffix, ok := os.LookupEnv(signalFxHostNameSuffixKey)
+	if !ok {
+		hostNameSuffix = ""
+	}
+
+	clusterKey, ok := os.LookupEnv(signalFxClusterFilter)
+	if !ok {
+		clusterKey = "cluster"
+	}
+
+	clusterName, ok := os.LookupEnv(signalFxClusterName)
+	if !ok {
+		clusterName = "*"
+	}
+
 	var signalFxAddress, signalFxAuthToken = DefaultSignalFxAddress, ""
 	if opts.Address != "" {
 		signalFxAddress = opts.Address
@@ -79,24 +100,26 @@ func NewSignalFxClient(opts watcher.MetricsProviderOpts) (watcher.MetricsProvide
 	if signalFxAuthToken == "" {
 		log.Fatalf("No auth token found to connect with SignalFx server")
 	}
-	return signalFxClient{client: http.Client{
+	return &signalFxClient{client: http.Client{
 		Timeout:   httpClientTimeout,
 		Transport: tlsConfig},
 		authToken:       signalFxAuthToken,
 		signalFxAddress: signalFxAddress,
+		hostKey: hostKey,
 		hostNameSuffix:  hostNameSuffix,
+		clusterKey: clusterKey,
 		clusterName:     clusterName}, nil
 }
 
-func (s signalFxClient) Name() string {
+func (s *signalFxClient) Name() string {
 	return watcher.SignalFxClientName
 }
 
-func (s signalFxClient) FetchHostMetrics(host string, window *watcher.Window) ([]watcher.Metric, error) {
+func (s *signalFxClient) FetchHostMetrics(host string, window *watcher.Window) ([]watcher.Metric, error) {
 	log.Debugf("fetching metrics for host %v", host)
 	var metrics []watcher.Metric
-	hostFilter := signalFxHostFilter + host + s.hostNameSuffix
-	clusterFilter := signalFxClusterFilter + s.clusterName
+	hostFilter := s.hostKey + ":" + host + s.hostNameSuffix
+	clusterFilter := s.clusterKey + ":" + s.clusterName
 	for _, metric := range []string{cpuUtilizationMetric, memoryUtilizationMetric} {
 		uri, err := s.buildMetricURL(hostFilter, clusterFilter, metric, window)
 		if err != nil {
@@ -131,9 +154,9 @@ func (s signalFxClient) FetchHostMetrics(host string, window *watcher.Window) ([
 	return metrics, nil
 }
 
-func (s signalFxClient) FetchAllHostsMetrics(window *watcher.Window) (map[string][]watcher.Metric, error) {
-	hostFilter := signalFxHostFilter + "*" + s.hostNameSuffix
-	clusterFilter := signalFxClusterFilter + s.clusterName
+func (s *signalFxClient) FetchAllHostsMetrics(window *watcher.Window) (map[string][]watcher.Metric, error) {
+	hostFilter := s.hostKey + ":*" + s.hostNameSuffix
+	clusterFilter := s.clusterKey + ":" + s.clusterName
 	metrics := make(map[string][]watcher.Metric)
 	for _, metric := range []string{cpuUtilizationMetric, memoryUtilizationMetric} {
 		uri, err := s.buildMetricURL(hostFilter, clusterFilter, metric, window)
@@ -173,7 +196,7 @@ func (s signalFxClient) FetchAllHostsMetrics(window *watcher.Window) (map[string
 		if err != nil {
 			return metrics, fmt.Errorf("received error in decoding metadata payload: %v", err)
 		}
-		mappedMetrics, err := getMetricsFromPayloads(metricPayload, metadataPayload)
+		mappedMetrics, err := getMetricsFromPayloads(metricPayload, metadataPayload, s.hostKey)
 		if err != nil {
 			return metrics, fmt.Errorf("received error in getting metrics from payload: %v", err)
 		}
@@ -185,11 +208,11 @@ func (s signalFxClient) FetchAllHostsMetrics(window *watcher.Window) (map[string
 	return metrics, nil
 }
 
-func (s signalFxClient) Health() (int, error) {
+func (s *signalFxClient) Health() (int, error) {
 	return Ping(s.client, s.signalFxAddress)
 }
 
-func (s signalFxClient) requestWithAuthToken(uri string) *http.Request {
+func (s *signalFxClient) requestWithAuthToken(uri string) *http.Request {
 	req, _ := http.NewRequest(http.MethodGet, uri, nil)
 	req.Header.Set("X-SF-Token", s.authToken)
 	req.Header.Set("Content-Type", "application/json")
@@ -224,7 +247,7 @@ func addMetadata(metric *watcher.Metric, metricType string) {
 	}
 }
 
-func (s signalFxClient) buildMetricURL(hostFilter string, clusterFilter string, metric string, window *watcher.Window) (uri *url.URL, err error) {
+func (s *signalFxClient) buildMetricURL(hostFilter string, clusterFilter string, metric string, window *watcher.Window) (uri *url.URL, err error) {
 	uri, err = url.Parse(s.signalFxAddress + signalFxMetricsAPI)
 	if err != nil {
 		return nil, err
@@ -245,7 +268,7 @@ func (s signalFxClient) buildMetricURL(hostFilter string, clusterFilter string, 
 	return
 }
 
-func (s signalFxClient) buildMetadataURL(host string, clusterFilter string, metric string) (uri *url.URL, err error) {
+func (s *signalFxClient) buildMetadataURL(host string, clusterFilter string, metric string) (uri *url.URL, err error) {
 	uri, err = url.Parse(s.signalFxAddress + signalFxMetdataAPI)
 	if err != nil {
 		return nil, err
@@ -346,7 +369,7 @@ Sample metaData payload:
             "created": 1614534848000,
             "creator": null,
             "dimensions": {
-                "host": "test.dev.com",
+                "[hostKey]": "test.dev.com",
                 "sf_metric": null
             },
         "id": "EvVH6P7BgAA",
@@ -359,7 +382,7 @@ Sample metaData payload:
 	]
 }
 */
-func getMetricsFromPayloads(metricData interface{}, metadata interface{}) (map[string]watcher.Metric, error) {
+func getMetricsFromPayloads(metricData interface{}, metadata interface{}, hostKey string) (map[string]watcher.Metric, error) {
 	keyHostMap := make(map[string]string)
 	hostMetricMap := make(map[string]watcher.Metric)
 	if _, ok := metadata.(map[string]interface{}); !ok {
@@ -396,7 +419,7 @@ func getMetricsFromPayloads(metricData interface{}, metadata interface{}) (map[s
 			log.Errorf("type conversion failed, found %T", dimensions)
 			continue
 		}
-		host := dimensions.(map[string]interface{})["host"]
+		host := dimensions.(map[string]interface{})[hostKey]
 		if host == nil {
 			log.Errorf("no host found in %v", dimensions)
 			continue

@@ -18,6 +18,10 @@ BUILDENVVAR=CGO_ENABLED=0
 all: build
 	chmod +x bin/load-watcher
 
+.PHONY: test
+test:
+	go test ./...
+
 .PHONY: build
 build:
 	GOOS=linux $(BUILDENVVAR) GOARCH=amd64 go build -o bin/load-watcher main.go
