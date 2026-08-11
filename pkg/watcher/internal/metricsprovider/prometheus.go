@@ -71,6 +71,25 @@ type promClient struct {
 	client api.Client
 }
 
+// customHeaderRoundTripper wraps an existing RoundTripper and adds custom headers
+type customHeaderRoundTripper struct {
+	headers map[string]string
+	rt      http.RoundTripper
+}
+
+// RoundTrip implements the RoundTripper interface
+func (c *customHeaderRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	// Clone the request to avoid modifying the original
+	req = req.Clone(req.Context())
+
+	// Add custom headers
+	for key, value := range c.headers {
+		req.Header.Set(key, value)
+	}
+
+	return c.rt.RoundTrip(req)
+}
+
 func loadCAFile(filepath string) (*x509.CertPool, error) {
 	caCert, err := ioutil.ReadFile(filepath)
 	if err != nil {
@@ -141,16 +160,30 @@ func NewPromClient(opts watcher.MetricsProviderOpts) (watcher.MetricsProviderCli
 		}
 	}
 
-	if promToken != "" {
-		client, err = api.NewClient(api.Config{
-			Address:      promAddress,
-			RoundTripper: config.NewAuthorizationCredentialsRoundTripper("Bearer", config.NewInlineSecret(opts.AuthToken), roundTripper),
-		})
-	} else {
-		client, err = api.NewClient(api.Config{
-			Address: promAddress,
-		})
+	// Apply custom headers if provided
+	if len(opts.Headers) > 0 {
+		// Convert map[string]string to *config.Headers
+		configHeaders := &config.Headers{
+			Headers: make(map[string]config.Header),
+		}
+		for key, value := range opts.Headers {
+			configHeaders.Headers[key] = config.Header{
+				Values: []string{value},
+			}
+		}
+		roundTripper = config.NewHeadersRoundTripper(configHeaders, roundTripper)
 	}
+
+	// Apply auth token if provided
+	if promToken != "" {
+		roundTripper = config.NewAuthorizationCredentialsRoundTripper("Bearer", config.NewInlineSecret(opts.AuthToken), roundTripper)
+	}
+
+	// Create the client with the final round tripper
+	client, err = api.NewClient(api.Config{
+		Address:      promAddress,
+		RoundTripper: roundTripper,
+	})
 
 	if err != nil {
 		log.Errorf("error creating prometheus client: %v", err)

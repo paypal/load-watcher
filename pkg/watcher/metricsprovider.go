@@ -32,11 +32,43 @@ const (
 	MetricsProviderTokenKey   = "METRICS_PROVIDER_TOKEN"
 	MetricsProviderAppKey     = "METRICS_PROVIDER_APP_KEY"
 	InsecureSkipVerify        = "INSECURE_SKIP_VERIFY"
+	MetricsProviderHeadersKey = "METRICS_PROVIDER_HEADERS"
 )
 
 var (
 	EnvMetricProviderOpts MetricsProviderOpts
 )
+
+// parseHeadersFromEnv parses headers from environment variable
+// Expected format: "key1=value1,key2=value2,key3=value3"
+// Example: "http_x_oauth_bypass_token=token123,X-API-Key=key456"
+func parseHeadersFromEnv(headersEnv string) map[string]string {
+	headers := make(map[string]string)
+	if headersEnv == "" {
+		return headers
+	}
+
+	// Split by comma to get individual header pairs
+	headerPairs := strings.Split(headersEnv, ",")
+	for _, pair := range headerPairs {
+		pair = strings.TrimSpace(pair)
+		if pair == "" {
+			continue
+		}
+
+		// Split by = to get key and value
+		parts := strings.SplitN(pair, "=", 2)
+		if len(parts) == 2 {
+			key := strings.TrimSpace(parts[0])
+			value := strings.TrimSpace(parts[1])
+			if key != "" && value != "" {
+				headers[key] = value
+			}
+		}
+	}
+
+	return headers
+}
 
 func init() {
 	var ok bool
@@ -53,6 +85,10 @@ func init() {
 	} else {
 		EnvMetricProviderOpts.InsecureSkipVerify = false
 	}
+
+	// Parse headers from environment variable
+	headersEnv, _ := os.LookupEnv(MetricsProviderHeadersKey)
+	EnvMetricProviderOpts.Headers = parseHeadersFromEnv(headersEnv)
 }
 
 // Interface to be implemented by any metrics provider client to interact with Watcher
@@ -75,4 +111,5 @@ type MetricsProviderOpts struct {
 	AuthToken          string
 	ApplicationKey     string
 	InsecureSkipVerify bool
+	Headers            map[string]string
 }

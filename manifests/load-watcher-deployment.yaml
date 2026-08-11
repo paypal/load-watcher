@@ -30,6 +30,8 @@ spec:
           value: [metrics_provider_endpoint]
         - name: METRICS_PROVIDER_TOKEN
           value: [token]
+        - name: METRICS_PROVIDER_HEADERS
+          value: "X-Oauth-Bypass-Token=token123"
         ports:
         - containerPort: 2020
 ---
