@@ -199,7 +199,7 @@ func (w *Watcher) GetLatestWatcherMetrics(duration string) (*WatcherMetrics, err
 		return w.deepCopyWatcherMetrics(&w.fifteenMinute[len(w.fifteenMinute)-1]), nil
 	case (duration == FifteenMinutes || duration == TenMinutes) && len(w.tenMinute) > 0:
 		return w.deepCopyWatcherMetrics(&w.tenMinute[len(w.tenMinute)-1]), nil
-	case (duration == TenMinutes || duration == FiveMinutes) && len(w.fiveMinute) > 0:
+	case (duration == FifteenMinutes || duration == TenMinutes || duration == FiveMinutes) && len(w.fiveMinute) > 0:
 		return w.deepCopyWatcherMetrics(&w.fiveMinute[len(w.fiveMinute)-1]), nil
 	default:
 		return nil, errors.New("unable to get any latest metrics")

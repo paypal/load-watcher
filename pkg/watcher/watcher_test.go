@@ -139,3 +139,18 @@ func TestMain(m *testing.M) {
 	ret := m.Run()
 	os.Exit(ret)
 }
+
+func TestGetLatestWatcherMetricsFifteenFallsBackToFive(t *testing.T) {
+	w := &Watcher{
+		isStarted: true,
+		fiveMinute: []WatcherMetrics{{
+			Source: "test",
+			Data: Data{NodeMetricsMap: map[string]NodeMetrics{
+				FirstNode: {Metrics: FiveMinutesMetricsMap[FirstNode]},
+			}},
+		}},
+	}
+	metrics, err := w.GetLatestWatcherMetrics(FifteenMinutes)
+	require.Nil(t, err)
+	assert.Equal(t, FiveMinutesMetricsMap[FirstNode], metrics.Data.NodeMetricsMap[FirstNode].Metrics)
+}
