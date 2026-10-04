@@ -12,6 +12,20 @@ The following metrics provider clients are currently supported:
 
 These clients fetch CPU usage currently, support for other resources will be added later as needed.
 
+## Compatibility Matrix
+
+The following table outlines the compatibility between `load-watcher` releases, supported `scheduler-plugins` (Trimaran) versions, and the corresponding Kubernetes / `client-go` versions:
+
+| `load-watcher` Version | `scheduler-plugins` (Trimaran) | Target Kubernetes Version | `client-go` Version |
+| :--- | :--- | :--- | :--- |
+| **v0.2.4** | v0.31.x – v0.35.x+ | v1.31.x – v1.35.x+ | v0.31.2 |
+| **v0.2.3** | v0.26.x – v0.30.x | v1.26.x – v1.30.x | v0.22.3 |
+| **v0.2.2** | v0.23.x – v0.25.x | v1.23.x – v1.25.x | v0.22.3 |
+| **v0.2.1** | v0.22.x | v1.22.x | v0.22.3 |
+| **v0.2.0** | v0.21.x | v1.21.x | v0.19.0 |
+| **v0.1.1** | v0.19.x – v0.20.x | v1.19.x – v1.20.x | v0.19.0 |
+| **v0.1.0** | Initial release | v1.19.x | v0.19.0 |
+
 # Tutorial
 
 This tutorial will guide you to build load watcher Docker image, which can be deployed to work with Trimaran scheduler plugins.
